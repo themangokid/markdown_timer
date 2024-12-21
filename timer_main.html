@@ -1,0 +1,664 @@
+<html>
+  <head>
+    <base href="https://websim.ai/app/markdown-timer/" />
+    <title>Markdown Timer Editor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    </head>
+
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap");
+  body {
+    font-family: "Roboto Mono", monospace;
+  }
+.timer-card {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.75);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 2rem;
+  font-weight: bold;
+  z-index: 1000;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+
+  .fade-enter-active,
+  .fade-leave-active {
+    transition: opacity 0.5s;
+  }
+  .fade-enter-from,
+  .fade-leave-to {
+    opacity: 0;
+  }
+
+  .timer-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .timer-overlay.minimized {
+    width: 100px;
+    height: 50px;
+    bottom: 10px;
+    left: 10px;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1000;
+  }
+
+  .hamburger-menu {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    cursor: pointer;
+    z-index: 1000;
+  }
+  .menu-content {
+    position: absolute;
+    top: 60px;
+    right: 20px;
+    background-color: rgba(0, 0, 0, 0.9);
+    border-radius: 8px;
+    padding: 10px;
+    display: none;
+  }
+  .menu-content.active {
+    display: block;
+  }
+  .session-detail {
+    display: none;
+  }
+  .session-detail.active {
+    display: block;
+  }
+  .chart-container {
+    width: 100%;
+    height: 400px;
+  }
+</style>
+  <body
+    class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center"
+  >
+    <div id="app" class="container mx-auto px-4 py-8 relative">
+	    
+	      <!-- Timer Card -->
+	<div v-if="isTimerActive" class="timer-card">
+	  {{ formatTime(currentTimer.remainingTime) }}
+	</div>
+
+
+      <div class="hamburger-menu" @click="toggleMenu">
+        <i class="fas fa-bars text-2xl"></i>
+      </div>
+      <div :class="{'menu-content': true, 'active': isMenuActive}">
+        <h3 class="text-xl font-bold mb-4">Saved Sessions</h3>
+        <div
+          v-for="(session, index) in savedSessions"
+          :key="index"
+          class="mb-4"
+        >
+          <p
+            class="cursor-pointer font-bold"
+            @click="toggleSessionDetails(index)"
+          >
+            Session {{ index + 1 }}
+            <i
+              :class="sessionDetailsVisible[index] ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"
+            ></i>
+          </p>
+          <div
+            :class="{'session-detail': true, 'active': sessionDetailsVisible[index]}"
+          >
+            <p>Start: {{ session.startTime }}</p>
+            <p>End: {{ session.endTime }}</p>
+            <p>Total Time: {{ formatTime(session.totalTime) }}</p>
+            <ul>
+              <li v-for="(timer, i) in session.timers" :key="i">
+                <strong>{{ timer.label }}</strong> - Started at: {{
+                timer.startTime }} | Finished at: {{ timer.endTime }}
+                <span v-if="timer.skipTime !== null"
+                  >| Skipped at: {{ formatTime(timer.skipTime) }}</span
+                >
+              </li>
+            </ul>
+            <div class="flex space-x-2">
+              <button
+                @click="downloadSession(index)"
+                class="mt-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-full text-sm font-bold"
+              >
+                Download
+              </button>
+              <button
+                @click="showGraph(index)"
+                class="mt-2 px-4 py-2 bg-green-500 hover:bg-green-600 rounded-full text-sm font-bold"
+              >
+                Show Graph
+              </button>
+            </div>
+          </div>
+          <hr class="my-2 border-gray-600" />
+        </div>
+      </div>
+
+      <h1 class="text-4xl font-bold mb-8 text-center">Markdown Timer</h1>
+
+      <div class="flex flex-col items-center space-y-6">
+        <textarea
+          v-model="timerInput"
+          @input="saveToLocalStorage"
+          class="w-full h-64 p-4 bg-gray-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Enter your timer markdown here..."
+        ></textarea>
+
+        <div class="w-full bg-gray-800 p-4 rounded-lg">
+          <h2 class="text-2xl font-bold mb-4">Timer Overview</h2>
+          <div
+            v-for="(timer, index) in timers"
+            :key="index"
+            class="flex justify-between items-center mb-2"
+          >
+            <span>{{ timer.label }}</span>
+            <span>{{ formatTime(timer.duration) }}</span>
+          </div>
+          <div class="mt-4">
+            <strong>Total Time:</strong> {{ formatTime(totalTime) }}
+          </div>
+        </div>
+
+        <div class="flex space-x-4">
+          <button
+            @click="startTimers"
+            class="px-6 py-3 bg-green-500 hover:bg-green-600 rounded-full text-xl font-bold transition duration-300 ease-in-out transform hover:scale-105"
+          >
+            <i class="fas fa-play mr-2"></i> Start
+          </button>
+         <button
+            @click="stopTimers"
+            class="px-6 py-3 bg-red-500 hover:bg-red-600 rounded-full text-xl font-bold transition duration-300 ease-in-out transform hover:scale-105"
+          >
+            <i class="fas fa-stop mr-2"></i> Stop
+          </button> 
+        </div>
+      </div>
+
+      <div
+        v-if="isTimerActive"
+        class="fixed inset-0 timer-overlay flex items-center justify-center"
+        @click="toggleTimerDisplay"
+      >
+        <div class="bg-gray-800 p-8 rounded-xl shadow-lg text-center">
+          <h2 class="text-3xl font-bold mb-4">{{ currentTimer.label }}</h2>
+          <p class="text-9xl font-bold mb-6">
+            {{ formatTime(currentTimer.remainingTime) }}
+          </p>
+          <p class="text-xl">{{ getNextTimerLabel() }}</p>
+          <div class="mt-6 flex justify-center space-x-4">
+            <button
+              @click.stop="pauseTimer"
+              class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 rounded-full text-lg font-bold transition duration-300 ease-in-out"
+            >
+              <i class="fas fa-pause mr-2"></i> Pause
+            </button>
+            <button
+              @click.stop="skipTimer"
+              class="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-full text-lg font-bold transition duration-300 ease-in-out"
+            >
+              <i class="fas fa-forward mr-2"></i> Skip
+            </button>
+          </div>
+          <div
+            v-if="currentTimer.skipTime !== null"
+            class="mt-4 text-lg text-gray-400"
+          >
+            Skipped at: {{ formatTime(currentTimer.skipTime) }}
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-if="showScoreScreen"
+        class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75"
+      >
+        <div class="bg-gray-800 p-8 rounded-lg shadow-xl text-center">
+          <h2 class="text-3xl font-bold mb-6">Score Screen</h2>
+          <div v-for="(timer, index) in timers" :key="index" class="mb-4">
+            <p class="text-xl"><strong>{{ timer.label }}</strong></p>
+            <p>Started at: {{ timer.startTime }}</p>
+            <p>Finished at: {{ timer.endTime }}</p>
+            <p v-if="timer.skipTime !== null">
+              Skipped at: {{ formatTime(timer.skipTime) }}
+            </p>
+            <p v-if="timer.skipTime !== null">
+              Time saved: {{ formatTime(timer.duration - timer.remainingTime) }}
+            </p>
+            <hr class="my-2 border-gray-600" />
+          </div>
+          <div class="mt-6">
+            <p class="text-lg">
+              <strong>Session started at:</strong> {{ sessionStartTime }}
+            </p>
+            <p class="text-lg">
+              <strong>Session finished at:</strong> {{ sessionEndTime }}
+            </p>
+            <p class="text-lg">
+              <strong>Total time:</strong> {{ formatTime(totalTime -
+              totalRemainingTime) }}
+            </p>
+          </div>
+          <button
+            @click="hideScoreScreen"
+            class="mt-6 px-6 py-3 bg-green-500 hover:bg-green-600 rounded-full text-xl font-bold transition duration-300 ease-in-out"
+          >
+            Okay
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal for displaying the chart -->
+      <div
+        v-if="showChartModal"
+        class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75"
+      >
+        <div class="bg-gray-800 p-8 rounded-lg shadow-xl text-center relative">
+          <canvas id="sessionChart" class="chart-container"></canvas>
+          <button
+            @click="closeChart"
+            class="absolute top-2 right-2 px-3 py-1 bg-red-500 hover:bg-red-600 rounded-full text-lg font-bold"
+          >
+            X
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const { createApp, ref, computed, onMounted } = Vue;
+
+      createApp({
+        setup() {
+          const timerInput = ref("");
+          const timers = ref([]);
+          const isTimerActive = ref(false);
+          const currentTimerIndex = ref(0);
+          const isPaused = ref(false);
+          const intervalId = ref(null);
+          const showScoreScreen = ref(false);
+          const isMenuActive = ref(false);
+          const sessionStartTime = ref(null);
+          const sessionEndTime = ref(null);
+          const savedSessions = ref([]);
+          const sessionDetailsVisible = ref([]);
+          const showChartModal = ref(false);
+          let chartInstance = null;
+
+          onMounted(() => {
+            if (localStorage.getItem("timerInput")) {
+              timerInput.value = localStorage.getItem("timerInput");
+              parseTimers();
+            }
+
+            if (localStorage.getItem("savedSessions")) {
+              savedSessions.value = JSON.parse(
+                localStorage.getItem("savedSessions"),
+              );
+              sessionDetailsVisible.value = savedSessions.value.map(
+                () => false,
+              );
+            }
+          });
+
+          const currentTimer = computed(() => {
+            return (
+              timers.value[currentTimerIndex.value] || {
+                label: "",
+                remainingTime: 0,
+                skipTime: null,
+                startTime: null,
+                endTime: null,
+              }
+            );
+          });
+
+          const totalTime = computed(() => {
+            return timers.value.reduce(
+              (total, timer) => total + timer.duration,
+              0,
+            );
+          });
+
+          const totalRemainingTime = computed(() => {
+            return timers.value.reduce(
+              (total, timer) => total + timer.remainingTime,
+              0,
+            );
+          });
+
+          function parseTimers() {
+            if (!timerInput.value) {
+              timers.value = [];
+              return;
+            }
+            const lines = timerInput.value.split("\n");
+            timers.value = lines
+              .map((line) => {
+                const match = line.match(
+                  /^(#*)\s*(\d+(?:\.\d+)?)\s*(sec|min):\s*(.+)$/i,
+                );
+                if (match) {
+                  const [, hashes, duration, unit, label] = match;
+                  const durationInSeconds =
+                    unit.toLowerCase() === "min"
+                      ? parseFloat(duration) * 60
+                      : parseFloat(duration);
+                  return {
+                    duration: durationInSeconds,
+                    label: label.trim(),
+                    remainingTime: durationInSeconds,
+                    skipTime: null,
+                    startTime: null,
+                    endTime: null,
+                  };
+                }
+                return null;
+              })
+              .filter((timer) => timer !== null);
+          }
+
+        let holdTimeout = null;
+
+function startFromTimer(index) {
+  if (timers.value.length === 0) return;
+  isTimerActive.value = true;
+  currentTimerIndex.value = index;
+  isPaused.value = false;
+  sessionStartTime.value = new Date().toISOString();
+  runTimer();
+}
+
+
+	
+function startHold() {
+    holdTimeout = setTimeout(() => {
+        stopTimers();
+    }, 1000); // Hold for 1 seconds to stop
+}
+
+function stopHold() {
+    clearTimeout(holdTimeout);
+}
+ 
+	 function startTimers() {
+	    if (timers.value.length === 0) return;
+	    isTimerActive.value = true;
+	    currentTimerIndex.value = 0;
+	    isPaused.value = false;
+	    sessionStartTime.value = new Date().toISOString(); // Save the exact start time
+	    runTimer();
+	} 
+
+          function runTimer() {
+            if (currentTimerIndex.value >= timers.value.length) {
+              stopTimers();
+              return;
+            }
+
+            const timer = timers.value[currentTimerIndex.value];
+            timer.startTime = new Date().toLocaleTimeString();
+
+            intervalId.value = setInterval(() => {
+              if (!isPaused.value) {
+                timer.remainingTime--;
+                if (timer.remainingTime <= 0) {
+                  clearInterval(intervalId.value);
+                  timer.endTime = new Date().toLocaleTimeString();
+                  playSound(timer.label);
+                  currentTimerIndex.value++;
+                  runTimer();
+                }
+              }
+            }, 1000);
+          }
+
+         function stopTimers() {
+            isTimerActive.value = false;
+            isPaused.value = false;
+            clearInterval(intervalId.value);
+            sessionEndTime.value = new Date().toLocaleTimeString();
+
+            if (timers.value.length > 2) {
+              saveSession();
+            }
+
+            showScoreScreen.value = true;
+          } 
+     function saveSession() {
+	          const session = {
+			          startTime: sessionStartTime.value,
+			          endTime: sessionEndTime.value,
+			          totalTime: totalTime.value - totalRemainingTime.value,
+			          timers: timers.value.map((timer) => ({
+					              label: timer.label,
+					              startTime: timer.startTime,
+					              endTime: timer.endTime,
+					              skipTime: timer.skipTime,
+					              originalDuration: timer.duration,
+					              remainingTime: timer.remainingTime,
+					          })),
+			          markdownInput: timerInput.value, 
+			      };
+
+	          let savedSessionsData = JSON.parse(localStorage.getItem("savedSessions")) || [];
+	          savedSessionsData.push(session);
+
+	          localStorage.setItem("savedSessions", JSON.stringify(savedSessionsData));
+	          savedSessions.value = savedSessionsData;
+	          sessionDetailsVisible.value.push(false);
+
+	          if (savedSessions.value.length > 4) {
+			          savedSessions.value.shift(); // remove the oldest session to keep only the last 4
+			          sessionDetailsVisible.value.shift();
+			      }
+      }
+
+         
+	          function toggleMenu() {
+            isMenuActive.value = !isMenuActive.value;
+          }
+
+          function toggleSessionDetails(index) {
+            sessionDetailsVisible.value[index] =
+              !sessionDetailsVisible.value[index];
+          }
+
+	function downloadSession(index) {
+	    const session = savedSessions.value[index];
+	    const currentDate = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
+	    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(session, null, 2));
+	    const downloadAnchorNode = document.createElement("a");
+	    downloadAnchorNode.setAttribute("href", dataStr);
+	    downloadAnchorNode.setAttribute("download", `session_${index + 1}_${currentDate}.json`); // Add the current date to the filename
+	    document.body.appendChild(downloadAnchorNode); // Required for Firefox
+	    downloadAnchorNode.click();
+	    downloadAnchorNode.remove();
+	}
+          function showGraph(index) {
+            const session = savedSessions.value[index];
+            const labels = session.timers.map((timer) => timer.label);
+            const data = session.timers.map((timer) =>
+              timer.remainingTime
+                ? timer.originalDuration - timer.remainingTime
+                : timer.originalDuration,
+            );
+            const backgroundColors = session.timers.map((timer) =>
+              timer.skipTime !== null
+                ? "rgba(255, 99, 132, 0.2)"
+                : "rgba(75, 192, 192, 0.2)",
+            );
+            const borderColors = session.timers.map((timer) =>
+              timer.skipTime !== null
+                ? "rgba(255, 99, 132, 1)"
+                : "rgba(75, 192, 192, 1)",
+            );
+
+            if (chartInstance) {
+              chartInstance.destroy();
+            }
+
+            const ctx = document
+              .getElementById("sessionChart")
+              .getContext("2d");
+            chartInstance = new Chart(ctx, {
+              type: "bar",
+              data: {
+                labels,
+                datasets: [
+                  {
+                    label: "Time Spent (seconds)",
+                    data,
+                    backgroundColor: backgroundColors,
+                    borderColor: borderColors,
+                    borderWidth: 1,
+                  },
+                ],
+              },
+              options: {
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                  },
+                },
+                plugins: {
+                  legend: {
+                    display: false,
+                  },
+                },
+              },
+            });
+
+            showChartModal.value = true;
+          }
+
+          function closeChart() {
+            showChartModal.value = false;
+          }
+
+         function pauseTimer() {
+            isPaused.value = !isPaused.value;
+          }
+
+          function skipTimer() {
+            const timer = timers.value[currentTimerIndex.value];
+            timer.skipTime = timer.remainingTime;
+            clearInterval(intervalId.value);
+            timer.endTime = new Date().toLocaleTimeString();
+            currentTimerIndex.value++;
+            if (currentTimerIndex.value < timers.value.length) {
+              runTimer();
+            } else {
+              stopTimers();
+            }
+          } 
+	
+
+		function toggleTimerDisplay(event) {
+    if (event.target === event.currentTarget) {
+        // Instead of toggling visibility, you can add a class to minimize it
+        const overlay = event.currentTarget;
+        overlay.classList.toggle("minimized");  // Create a CSS class 'minimized' that reduces the size and places it in a corner
+    }
+}
+
+
+
+
+
+
+
+	          function hideScoreScreen() {
+            showScoreScreen.value = false;
+          }
+
+          function saveToLocalStorage() {
+            localStorage.setItem("timerInput", timerInput.value);
+          }
+
+          function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
+          }
+
+          function getNextTimerLabel() {
+            const nextTimer = timers.value[currentTimerIndex.value + 1];
+            return nextTimer ? `Next: ${nextTimer.label}` : "Last timer";
+          }
+
+          function playSound(label) {
+            const audio = new Audio(
+              label.toLowerCase().includes("rest")
+                ? "https://websim.ai/sounds/relax.mp3"
+                : "https://websim.ai/sounds/bell.mp3",
+            );
+            audio.play();
+          }
+
+          return {
+            timerInput,
+            timers,
+            isTimerActive,
+            currentTimer,
+            totalTime,
+            totalRemainingTime,
+            parseTimers,
+            startTimers,
+            stopTimers,
+            pauseTimer,
+            skipTimer,
+            toggleTimerDisplay,
+            hideScoreScreen,
+            saveToLocalStorage,
+            formatTime,
+            getNextTimerLabel,
+            playSound,
+            showScoreScreen,
+            isMenuActive,
+            toggleMenu,
+            savedSessions,
+            sessionDetailsVisible,
+            toggleSessionDetails,
+            downloadSession,
+            showGraph,
+            showChartModal,
+            closeChart,
+            sessionStartTime,
+            sessionEndTime,
+          };
+        },
+      }).mount("#app");
+    </script>
+  </body>
+</html>
+
+
