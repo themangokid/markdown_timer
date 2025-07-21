@@ -183,7 +183,7 @@
             <span>{{ formatTime(timer.duration) }}</span>
           </div>
           <div class="mt-4">
-            <strong>Total Time:</strong> {{ formatTime(totalTime) }}
+            <strong>Total Task Time:</strong> {{ formatTime(totalTime) }}
           </div>
         </div>
 
@@ -194,12 +194,7 @@
           >
             <i class="fas fa-play mr-2"></i> Start
           </button>
-         <button
-            @click="stopTimers"
-            class="px-6 py-3 bg-red-500 hover:bg-red-600 rounded-full text-xl font-bold transition duration-300 ease-in-out transform hover:scale-105"
-          >
-            <i class="fas fa-stop mr-2"></i> Stop
-          </button> 
+
         </div>
       </div>
 
@@ -215,18 +210,38 @@
           </p>
           <p class="text-xl">{{ getNextTimerLabel() }}</p>
           <div class="mt-6 flex justify-center space-x-4">
+            
+            <button
+              @click.stop="goBack"
+
+              class="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-full text-lg font-bold transition duration-300 ease-in-out"
+            >
+              <i class="fas fa-backward mr-2"></i>Back
+            </button>
             <button
               @click.stop="pauseTimer"
               class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 rounded-full text-lg font-bold transition duration-300 ease-in-out"
             >
-              <i class="fas fa-pause mr-2"></i> Pause
+              <i class="fas fa-pause mr-2"></i>Pause
             </button>
             <button
               @click.stop="skipTimer"
               class="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-full text-lg font-bold transition duration-300 ease-in-out"
             >
-              <i class="fas fa-forward mr-2"></i> Skip
+              <i class="fas fa-forward mr-2"></i>Skip
             </button>
+            
+            <!-- Break -->
+             <br>
+
+          <button
+            @click="stopTimers"
+            class="px-6 py-3 bg-red-500 hover:bg-red-600 rounded-full text-xl font-bold transition duration-300 ease-in-out transform hover:scale-105"
+          >
+            <i class="fas fa-stop mr-2"></i>Stop
+          </button> 
+
+
           </div>
           <div
             v-if="currentTimer.skipTime !== null"
@@ -590,8 +605,39 @@ function stopHold() {
     }
 }
 
+// DDD
+function isLastTimer() {
+  return currentTimerIndex.value === timers.value.length - 1;
+}
 
+window.addEventListener("keydown", handleKeyDown);
+function handleKeyDown(e){
+  if (!isTimerActive.value) return;
 
+  if (e.key === "ArrowRight" && !isLastTimer())
+  {
+    e.preventDefault();
+    skipTimer();
+  }
+  if (e.key === "ArrowLeft"){
+    e.preventDefault();
+    goBack();
+  }
+}
+
+function goBack(){
+  if (currentTimerIndex.value > 0){
+    clearInterval(intervalId.value);
+
+    currentTimerIndex.value--;
+    const previousTimer = timers.value[currentTimerIndex.value];
+    previousTimer.remainingTime = previousTimer.duration;
+    previousTimer.endTime = null;
+    previousTimer.skipTime = null;
+    runTimer();
+  }
+
+}
 
 
 
@@ -654,6 +700,7 @@ function stopHold() {
             closeChart,
             sessionStartTime,
             sessionEndTime,
+            goBack,
           };
         },
       }).mount("#app");
