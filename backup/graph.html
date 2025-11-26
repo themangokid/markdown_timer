@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="="width=device-width, initial-scale=1.0">
+  <title>Import and Display Session Graphs</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Roboto Mono', monospace; background-color: #1a202c; color: white; }
+    .container { max-width: 800px; margin: 50px auto; text-align: center; }
+    .chart-container { width: 100%; height: 400px; margin-top: 20px; }
+    .stats { text-align: left; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="text-4xl font-bold mb-8">Import Session JSON and Display Graphs</h1>
+    
+    <input type="file" id="fileInput" class="mb-4 p-2 text-gray-900" accept=".json" multiple>
+    <div id="fileDetails" class="text-lg mb-4"></div>
+
+    <!-- Bar Chart -->
+    <canvas id="sessionBarChart" class="chart-container"></canvas>
+
+    <!-- Pie Chart -->
+    <canvas id="completionPieChart" class="chart-container"></canvas>
+
+    <!-- Line Chart -->
+    <canvas id="timeLineChart" class="chart-container"></canvas>
+
+    <div id="stats" class="stats"></div>
+    
+    <button id="resetButton" class="mt-4 px-6 py-3 bg-red-500 hover:bg-red-600 rounded-full text-xl font-bold" style="display: none;">
+      Reset
+    </button>
+  </div>
+
+  <script>
+    let barChartInstance = null;
+    let pieChartInstance = null;
+    let lineChartInstance = null;
+    let mergedData = {
+      timers: []
+    };
+
+    // Automatically load session data from localStorage on page load
+    document.addEventListener("DOMContentLoaded", function() {
+      const savedData = localStorage.getItem('savedSessions');
+      if (savedData) {
+        try {
+          const parsedData = JSON.parse(savedData);
+          if (parsedData && Array.isArray(parsedData)) {
+            console.log("Loaded session data:", parsedData);
+
+            // Filter out incomplete or invalid sessions
+            const validSessions = parsedData.filter(session => session.startTime && Array.isArray(session.timers) && session.timers.length > 0);
+
+            if (validSessions.length === 0) {
+              console.warn("No valid sessions available to display.");
+              return;
+            }
+
+            // Flatten the timer data from all valid sessions
+            mergedData = { timers: validSessions.flatMap(session => session.timers) };
+
+            // Display and generate charts
+            displayFileDetails(mergedData);
+            createBarChart(mergedData);
+            createPieChart(mergedData);
+            createLineChart(mergedData);
+            displayStats(mergedData);
+          } else {
+            console.warn("No valid session data found in local storage.");
+          }
+        } catch (error) {
+          console.error('Error parsing JSON:', error);
+        }
+      } else {
+        console.log('No data found under the key "savedSessions".');
+      }
+    });
+
+    document.getElementById('fileInput').addEventListener('change', function(event) {
+      const files = event.target.files;
+      if (files.length) {
+        mergedData = { timers: [] }; // Reset merged data
+        Array.from(files).forEach(file => {
+          if (file.type === 'application/json') {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+              const jsonData = JSON.parse(e.target.result);
+              mergedData.timers = mergedData.timers.concat(jsonData.timers);
+              displayFileDetails(mergedData);
+              createBarChart(mergedData);
+              createPieChart(mergedData);
+              createLineChart(mergedData);
+              displayStats(mergedData);
+            };
+            reader.readAsText(file);
+          }
+        });
+      } else {
+        alert('Please upload valid JSON files.');
+      }
+    });
+
+    document.getElementById('resetButton').addEventListener('click', function() {
+      document.getElementById('fileInput').value = "";
+      document.getElementById('fileDetails').innerText = "";
+      document.getElementById('stats').innerText = "";
+      if (barChartInstance) barChartInstance.destroy();
+      if (pieChartInstance) pieChartInstance.destroy();
+      if (lineChartInstance) pieChartInstance.destroy();
+      document.getElementById('resetButton').style.display = 'none';
+    });
+
+    function displayFileDetails(jsonData) {
+      const details = `
+        <p><strong>Total Sessions:</strong> ${jsonData.timers.length}</p>
+      `;
+      document.getElementById('fileDetails').innerHTML = details;
+    }
+
+    function createBarChart(jsonData) {
+      const labels = jsonData.timers.map(timer => timer.label);
+      const data = jsonData.timers.map(timer => timer.remainingTime ? (timer.originalDuration - timer.remainingTime) : timer.originalDuration);
+      const backgroundColors = jsonData.timers.map(timer => timer.skipTime !== null ? 'rgba(255, 99, 132, 0.2)' : 'rgba(75, 192, 192, 0.2)');
+      const borderColors = jsonData.timers.map(timer => timer.skipTime !== null ? 'rgba(255, 99, 132, 1)' : 'rgba(75, 192, 192, 1)');
+
+      if (barChartInstance) barChartInstance.destroy();
+
+      const ctx = document.getElementById('sessionBarChart').getContext('2d');
+      barChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Time Spent (seconds)',
+            data,
+            backgroundColor: backgroundColors,
+            borderColor: borderColors,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          scales: {
+            y: { beginAtZero: true }
+          },
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+    }
+
+    function createPieChart(jsonData) {
+      const totalTasks = jsonData.timers.length;
+      const completedTasks = jsonData.timers.filter(timer => timer.skipTime === null).length;
+      const skippedTasks = totalTasks - completedTasks;
+
+      if (pieChartInstance) pieChartInstance.destroy();
+
+      const ctx = document.getElementById('completionPieChart').getContext('2d');
+      pieChartInstance = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: ['Completed', 'Skipped'],
+          datasets: [{
+            data: [completedTasks, skippedTasks],
+            backgroundColor: ['rgba(75, 192, 192, 0.2)', 'rgba(255, 99, 132, 0.2)'],
+            borderColor: ['rgba(75, 192, 192, 1)', 'rgba(255, 99, 132, 1)'],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          plugins: {
+            legend: { display: true }
+          }
+        }
+      });
+    }
+
+    function createLineChart(jsonData) {
+      const labels = jsonData.timers.map(timer => timer.label);
+      const data = jsonData.timers.map((timer, index) => jsonData.timers.slice(0, index + 1).reduce((sum, t) => sum + (t.remainingTime ? (t.originalDuration - t.remainingTime) : t.originalDuration), 0));
+
+      if (lineChartInstance) lineChartInstance.destroy();
+
+      const ctx = document.getElementById('timeLineChart').getContext('2d');
+      lineChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Cumulative Time Spent (seconds)',
+            data,
+            fill: false,
+            borderColor: 'rgba(75, 192, 192, 1)',
+            tension: 0.1
+          }]
+        },
+        options: {
+          scales: {
+            y: { beginAtZero: true }
+          },
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+    }
+
+    function displayStats(jsonData) {
+      const totalTasks = jsonData.timers.length;
+      const completedTasks = jsonData.timers.filter(timer => timer.skipTime === null).length;
+      const skippedTasks = totalTasks - completedTasks;
+      const totalTimeSpent = jsonData.timers.reduce((sum, timer) => sum + (timer.remainingTime ? (timer.originalDuration - timer.remainingTime) : timer.originalDuration), 0);
+      const averageTimePerTask = (totalTimeSpent / completedTasks).toFixed(2);
+      const points = calculatePoints(jsonData);
+
+      const stats = `
+        <p><strong>Total Tasks:</strong> ${totalTasks}</p>
+        <p><strong>Tasks Completed:</strong> ${completedTasks}</p>
+        <p><strong>Tasks Skipped:</strong> ${skippedTasks}</p>
+        <p><strong>Total Time Spent:</strong> ${formatTime(totalTimeSpent)}</p>
+        <p><strong>Average Time per Completed Task:</strong> ${formatTime(averageTimePerTask)}</p>
+        <p><strong>Percentage of Tasks Completed:</strong> ${((completedTasks / totalTasks) * 100).toFixed(2)}%</p>
+        <p><strong>Total Points:</strong> ${points}</p>
+      `;
+      document.getElementById('stats').innerHTML = stats;
+    }
+
+    function calculatePoints(jsonData) {
+      let points = 0;
+      jsonData.timers.forEach(timer => {
+        if (timer.skipTime === null) {
+          points += 10; // 10 points for completing a task
+        } else {
+          points += 5; // 5 points for skipping, since skipping can be positive
+        }
+      });
+      return points;
+    }
+
+    function formatTime(seconds) {
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = seconds % 60;
+      return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+  </script>
+</body>
+</html>
+

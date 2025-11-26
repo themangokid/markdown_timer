@@ -69,52 +69,23 @@
   }
 
   .hamburger-menu {
-    position: fixed;
+    position: absolute;
     top: 20px;
     right: 20px;
     cursor: pointer;
-    z-index: 1002;
-    font-size: 1.5rem;
-    color: white;
-    background-color: rgba(0, 0, 0, 0.7);
-    padding: 10px;
-    border-radius: 8px;
-    transition: background-color 0.3s;
-  }
-  .hamburger-menu:hover {
-    background-color: rgba(0, 0, 0, 0.9);
+    z-index: 1000;
   }
   .menu-content {
-    position: fixed;
-    top: 70px;
+    position: absolute;
+    top: 60px;
     right: 20px;
-    background-color: rgba(0, 0, 0, 0.95);
+    background-color: rgba(0, 0, 0, 0.9);
     border-radius: 8px;
-    padding: 15px;
+    padding: 10px;
     display: none;
-    max-width: 400px;
-    min-width: 320px;
-    max-height: 80vh;
-    overflow-y: auto;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
-    z-index: 1001;
   }
   .menu-content.active {
     display: block;
-  }
-  .menu-content::-webkit-scrollbar {
-    width: 8px;
-  }
-  .menu-content::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-  }
-  .menu-content::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 4px;
-  }
-  .menu-content::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.5);
   }
   .session-detail {
     display: none;
@@ -145,70 +116,6 @@
         <i class="fas fa-bars text-2xl"></i>
       </div>
       <div :class="{'menu-content': true, 'active': isMenuActive}">
-        <h3 class="text-xl font-bold mb-4">Settings</h3>
-
-        <!-- Tempo Settings -->
-        <div class="mb-4 p-3 bg-gray-700 rounded-lg">
-          <h4 class="text-lg font-bold mb-2">
-            <i class="fas fa-tachometer-alt mr-2"></i>Schedule Tempo
-          </h4>
-          <p class="text-xs text-gray-400 mb-3">Adjust task durations for your pace</p>
-          <div class="flex flex-col space-y-2">
-            <label class="flex items-center cursor-pointer p-2 rounded hover:bg-gray-600 transition" :class="{'bg-green-600': selectedTempo === '0.8'}">
-              <input
-                type="radio"
-                name="tempo"
-                value="0.8"
-                v-model="selectedTempo"
-                @change="saveTempoSettings"
-                class="mr-3"
-              />
-              <span>
-                <i class="fas fa-running mr-1"></i>Fast (80% time)
-              </span>
-            </label>
-            <label class="flex items-center cursor-pointer p-2 rounded hover:bg-gray-600 transition" :class="{'bg-green-600': selectedTempo === '1.0'}">
-              <input
-                type="radio"
-                name="tempo"
-                value="1.0"
-                v-model="selectedTempo"
-                @change="saveTempoSettings"
-                class="mr-3"
-              />
-              <span>
-                <i class="fas fa-walking mr-1"></i>Standard (100% time)
-              </span>
-            </label>
-            <label class="flex items-center cursor-pointer p-2 rounded hover:bg-gray-600 transition" :class="{'bg-green-600': selectedTempo === '1.2'}">
-              <input
-                type="radio"
-                name="tempo"
-                value="1.2"
-                v-model="selectedTempo"
-                @change="saveTempoSettings"
-                class="mr-3"
-              />
-              <span>
-                <i class="fas fa-hiking mr-1"></i>Slow (120% time)
-              </span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Efficiency Graph -->
-        <div class="mb-4 p-3 bg-gray-700 rounded-lg">
-          <h4 class="text-lg font-bold mb-2">Efficiency Analytics</h4>
-          <button
-            @click="showEfficiencyGraph"
-            class="w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-full text-sm font-bold"
-          >
-            <i class="fas fa-chart-line mr-2"></i>View Efficiency
-          </button>
-        </div>
-
-        <hr class="my-4 border-gray-600" />
-
         <h3 class="text-xl font-bold mb-4">Saved Sessions</h3>
         <div
           v-for="(session, index) in savedSessions"
@@ -227,31 +134,30 @@
           <div
             :class="{'session-detail': true, 'active': sessionDetailsVisible[index]}"
           >
-            <p class="text-xs"><strong>Start:</strong> {{ session.startTime }}</p>
-            <p class="text-xs"><strong>End:</strong> {{ session.endTime }}</p>
-            <p class="text-xs mb-2"><strong>Total Time:</strong> {{ formatTime(session.totalTime) }}</p>
-            <div class="text-xs mb-2" style="max-height: 150px; overflow-y: auto;">
-              <p class="font-bold mb-1">Tasks ({{ session.timers.length }}):</p>
-              <div v-for="(timer, i) in session.timers" :key="i" class="mb-1 pl-2 border-l border-gray-600">
-                <div><strong>{{ timer.label }}</strong></div>
-                <div class="text-gray-400">
-                  {{ timer.startTime }} → {{ timer.endTime }}
-                  <span v-if="timer.skipTime !== null" class="text-yellow-400">(Skipped)</span>
-                </div>
-              </div>
-            </div>
+            <p>Start: {{ session.startTime }}</p>
+            <p>End: {{ session.endTime }}</p>
+            <p>Total Time: {{ formatTime(session.totalTime) }}</p>
+            <ul>
+              <li v-for="(timer, i) in session.timers" :key="i">
+                <strong>{{ timer.label }}</strong> - Started at: {{
+                timer.startTime }} | Finished at: {{ timer.endTime }}
+                <span v-if="timer.skipTime !== null"
+                  >| Skipped at: {{ formatTime(timer.skipTime) }}</span
+                >
+              </li>
+            </ul>
             <div class="flex space-x-2">
               <button
                 @click="downloadSession(index)"
-                class="mt-2 px-3 py-1 bg-blue-500 hover:bg-blue-600 rounded text-xs font-bold"
+                class="mt-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-full text-sm font-bold"
               >
-                <i class="fas fa-download mr-1"></i>Download
+                Download
               </button>
               <button
                 @click="showGraph(index)"
-                class="mt-2 px-3 py-1 bg-green-500 hover:bg-green-600 rounded text-xs font-bold"
+                class="mt-2 px-4 py-2 bg-green-500 hover:bg-green-600 rounded-full text-sm font-bold"
               >
-                <i class="fas fa-chart-bar mr-1"></i>Graph
+                Show Graph
               </button>
             </div>
           </div>
@@ -259,13 +165,7 @@
         </div>
       </div>
 
-      <div class="text-center p-4 bg-gray-800 rounded-lg mb-8">
-        <h1 class="text-4xl font-bold">Markdown Timer Editor</h1>
-        <div class="text-sm font-normal text-gray-400 mt-2">
-          <i class="fas fa-tachometer-alt mr-1"></i>
-          <span>{{ selectedTempo === '0.8' ? 'Fast' : selectedTempo === '1.2' ? 'Slow' : 'Standard' }} Tempo</span>
-        </div>
-      </div>
+      <h1 class="text-4xl font-bold mb-8 text-center p-4 bg-gray-800  rounded-lg text-2xl font-bold mb-4">Markdown Timer Editor</h1>
 
       <div class="flex flex-col items-center space-y-6">
         <textarea
@@ -287,6 +187,7 @@
           </div>
           <div class="mt-4">
             <strong>Total Task Time:</strong> {{ formatTime(totalTime) }}
+            <strong>Target Task Time:</strong> {{ formatTime(targetTime) }}
           </div>
         </div>
 
@@ -409,24 +310,6 @@
           </button>
         </div>
       </div>
-
-      <!-- Efficiency Graph Modal -->
-      <div
-        v-if="showEfficiencyModal"
-        class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75"
-      >
-        <div class="bg-gray-800 p-8 rounded-lg shadow-xl text-center relative" style="max-width: 900px; width: 90%;">
-          <h3 class="text-2xl font-bold mb-4">Efficiency Analytics</h3>
-          <p class="text-sm text-gray-400 mb-4">Comparing planned vs actual time spent</p>
-          <canvas id="efficiencyChart" class="chart-container"></canvas>
-          <button
-            @click="closeEfficiencyGraph"
-            class="absolute top-2 right-2 px-3 py-1 bg-red-500 hover:bg-red-600 rounded-full text-lg font-bold"
-          >
-            X
-          </button>
-        </div>
-      </div>
     </div>
 
     <script>
@@ -447,10 +330,7 @@
           const savedSessions = ref([]);
           const sessionDetailsVisible = ref([]);
           const showChartModal = ref(false);
-          const showEfficiencyModal = ref(false);
-          const selectedTempo = ref("1.0");
           let chartInstance = null;
-          let efficiencyChartInstance = null;
 
           onMounted(() => {
             if (localStorage.getItem("timerInput")) {
@@ -465,10 +345,6 @@
               sessionDetailsVisible.value = savedSessions.value.map(
                 () => false,
               );
-            }
-
-            if (localStorage.getItem("selectedTempo")) {
-              selectedTempo.value = localStorage.getItem("selectedTempo");
             }
           });
 
@@ -490,6 +366,11 @@
               0,
             );
           });
+          // DDD
+          const targetTime = computed(() => {
+            const total = totalTime.value;
+            const now = Date.now();
+          });
 
           const totalRemainingTime = computed(() => {
             return timers.value.reduce(
@@ -504,7 +385,6 @@
               return;
             }
             const lines = timerInput.value.split("\n");
-            const tempoMultiplier = parseFloat(selectedTempo.value);
             timers.value = lines
               .map((line) => {
                 const match = line.match(
@@ -512,14 +392,10 @@
                 );
                 if (match) {
                   const [, hashes, duration, unit, label] = match;
-                  let durationInSeconds =
+                  const durationInSeconds =
                     unit.toLowerCase() === "min"
                       ? parseFloat(duration) * 60
                       : parseFloat(duration);
-
-                  // Apply tempo multiplier
-                  durationInSeconds = Math.round(durationInSeconds * tempoMultiplier);
-
                   return {
                     duration: durationInSeconds,
                     label: label.trim(),
@@ -815,112 +691,6 @@ function goBack(){
             audio.play();
           }
 
-          function saveTempoSettings() {
-            localStorage.setItem("selectedTempo", selectedTempo.value);
-            parseTimers(); // Re-parse timers with new tempo
-          }
-
-          function showEfficiencyGraph() {
-            if (savedSessions.value.length === 0) {
-              alert("No sessions available for efficiency analysis");
-              return;
-            }
-
-            // Prepare data for the efficiency graph
-            const sessionLabels = savedSessions.value.map((_, index) => `Session ${index + 1}`);
-            const plannedTimes = savedSessions.value.map(session => {
-              return session.timers.reduce((total, timer) => {
-                const planned = timer.originalDuration || timer.remainingTime + (timer.skipTime ? timer.skipTime : 0);
-                return total + planned;
-              }, 0);
-            });
-            const actualTimes = savedSessions.value.map(session => {
-              return session.timers.reduce((total, timer) => {
-                const actual = timer.originalDuration - timer.remainingTime;
-                return total + actual;
-              }, 0);
-            });
-            const efficiencyRatios = savedSessions.value.map((session, index) => {
-              const planned = plannedTimes[index];
-              const actual = actualTimes[index];
-              return actual > 0 ? (planned / actual) * 100 : 100;
-            });
-
-            if (efficiencyChartInstance) {
-              efficiencyChartInstance.destroy();
-            }
-
-            const ctx = document.getElementById("efficiencyChart").getContext("2d");
-            efficiencyChartInstance = new Chart(ctx, {
-              type: "bar",
-              data: {
-                labels: sessionLabels,
-                datasets: [
-                  {
-                    label: "Planned Time (seconds)",
-                    data: plannedTimes,
-                    backgroundColor: "rgba(54, 162, 235, 0.6)",
-                    borderColor: "rgba(54, 162, 235, 1)",
-                    borderWidth: 1,
-                  },
-                  {
-                    label: "Actual Time (seconds)",
-                    data: actualTimes,
-                    backgroundColor: "rgba(255, 99, 132, 0.6)",
-                    borderColor: "rgba(255, 99, 132, 1)",
-                    borderWidth: 1,
-                  },
-                ],
-              },
-              options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                scales: {
-                  y: {
-                    beginAtZero: true,
-                    ticks: {
-                      color: "white",
-                    },
-                    grid: {
-                      color: "rgba(255, 255, 255, 0.1)",
-                    },
-                  },
-                  x: {
-                    ticks: {
-                      color: "white",
-                    },
-                    grid: {
-                      color: "rgba(255, 255, 255, 0.1)",
-                    },
-                  },
-                },
-                plugins: {
-                  legend: {
-                    labels: {
-                      color: "white",
-                    },
-                  },
-                  tooltip: {
-                    callbacks: {
-                      afterLabel: function(context) {
-                        if (context.datasetIndex === 1) {
-                          const efficiency = efficiencyRatios[context.dataIndex];
-                          return `Efficiency: ${efficiency.toFixed(1)}%`;
-                        }
-                      },
-                    },
-                  },
-                },
-              },
-            });
-
-            showEfficiencyModal.value = true;
-          }
-
-          function closeEfficiencyGraph() {
-            showEfficiencyModal.value = false;
-          }
-
           return {
             timerInput,
             timers,
@@ -952,11 +722,6 @@ function goBack(){
             sessionStartTime,
             sessionEndTime,
             goBack,
-            selectedTempo,
-            saveTempoSettings,
-            showEfficiencyGraph,
-            showEfficiencyModal,
-            closeEfficiencyGraph,
           };
         },
       }).mount("#app");
