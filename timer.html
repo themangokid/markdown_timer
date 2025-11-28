@@ -198,13 +198,27 @@
 
         <!-- Efficiency Graph -->
         <div class="mb-4 p-3 bg-gray-700 rounded-lg">
-          <h4 class="text-lg font-bold mb-2">Efficiency Analytics</h4>
+          <h4 class="text-lg font-bold mb-2">Session History</h4>
           <button
             @click="showEfficiencyGraph"
             class="w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-full text-sm font-bold"
           >
-            <i class="fas fa-chart-line mr-2"></i>View Efficiency
+            <i class="fas fa-chart-line mr-2"></i>View History (H)
           </button>
+        </div>
+
+        <!-- Keyboard Shortcuts -->
+        <div class="mb-4 p-3 bg-gray-700 rounded-lg">
+          <h4 class="text-lg font-bold mb-2">
+            <i class="fas fa-keyboard mr-2"></i>Keyboard Shortcuts
+          </h4>
+          <div class="text-xs text-gray-300 space-y-1">
+            <p><kbd class="bg-gray-600 px-2 py-1 rounded">Space</kbd> Start/Pause timer</p>
+            <p><kbd class="bg-gray-600 px-2 py-1 rounded">→</kbd> Skip task</p>
+            <p><kbd class="bg-gray-600 px-2 py-1 rounded">←</kbd> Previous task</p>
+            <p><kbd class="bg-gray-600 px-2 py-1 rounded">H</kbd> View history</p>
+            <p><kbd class="bg-gray-600 px-2 py-1 rounded">M</kbd> Toggle menu</p>
+          </div>
         </div>
 
         <hr class="my-4 border-gray-600" />
@@ -295,7 +309,7 @@
             @click="startTimers"
             class="px-6 py-3 bg-green-500 hover:bg-green-600 rounded-full text-xl font-bold transition duration-300 ease-in-out transform hover:scale-105"
           >
-            <i class="fas fa-play mr-2"></i> Start
+            <i class="fas fa-play mr-2"></i> Start (Space)
           </button>
 
         </div>
@@ -313,25 +327,25 @@
           </p>
           <p class="text-xl">{{ getNextTimerLabel() }}</p>
           <div class="mt-6 flex justify-center space-x-4">
-            
+
             <button
               @click.stop="goBack"
 
               class="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-full text-lg font-bold transition duration-300 ease-in-out"
             >
-              <i class="fas fa-backward mr-2"></i>Back
+              <i class="fas fa-backward mr-2"></i>Back (←)
             </button>
             <button
               @click.stop="pauseTimer"
               class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 rounded-full text-lg font-bold transition duration-300 ease-in-out"
             >
-              <i class="fas fa-pause mr-2"></i>Pause
+              <i class="fas fa-pause mr-2"></i>Pause (Space)
             </button>
             <button
               @click.stop="skipTimer"
               class="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-full text-lg font-bold transition duration-300 ease-in-out"
             >
-              <i class="fas fa-forward mr-2"></i>Skip
+              <i class="fas fa-forward mr-2"></i>Skip (→)
             </button>
             
             <!-- Break -->
@@ -414,10 +428,11 @@
       <div
         v-if="showEfficiencyModal"
         class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75"
+        style="z-index: 2000;"
       >
         <div class="bg-gray-800 p-8 rounded-lg shadow-xl text-center relative" style="max-width: 900px; width: 90%;">
-          <h3 class="text-2xl font-bold mb-4">Efficiency Analytics</h3>
-          <p class="text-sm text-gray-400 mb-4">Comparing planned vs actual time spent</p>
+          <h3 class="text-2xl font-bold mb-4">Session History</h3>
+          <p class="text-sm text-gray-400 mb-4">Track your time spent across sessions</p>
           <canvas id="efficiencyChart" class="chart-container"></canvas>
           <button
             @click="closeEfficiencyGraph"
@@ -546,32 +561,6 @@ function startFromTimer(index) {
 }
 
 
-window.addEventListener("keydown", handleKeyDown);
-function handleKeyDown(e){
-  if (!isTimerActive.value) return;
-
-  if (e.key === "ArrowRight" && !isLastTimer())
-  {
-    e.preventDefault();
-    skipTimer();
-  }
-  if (e.key === "ArrowLeft"){
-    e.preventDefault();
-    goBack();
-  }
-  console.log("handleKeyDown");
-
-}
-
-window.addEventListener("keydown", handleSpacebarDown);
-function handleSpacebarDown(e){
-  if (!isTimerActive.value) return;
-  if (e.key === " ") {
-    e.preventDefault();
-    startTimers();
-    document.activeElement.blur(); // I just added this line
-  }
-}
 
 function startHold() {
     holdTimeout = setTimeout(() => {
@@ -826,25 +815,10 @@ function goBack(){
               return;
             }
 
-            // Prepare data for the efficiency graph
+            // Prepare data - simpler approach using session.totalTime
             const sessionLabels = savedSessions.value.map((_, index) => `Session ${index + 1}`);
-            const plannedTimes = savedSessions.value.map(session => {
-              return session.timers.reduce((total, timer) => {
-                const planned = timer.originalDuration || timer.remainingTime + (timer.skipTime ? timer.skipTime : 0);
-                return total + planned;
-              }, 0);
-            });
-            const actualTimes = savedSessions.value.map(session => {
-              return session.timers.reduce((total, timer) => {
-                const actual = timer.originalDuration - timer.remainingTime;
-                return total + actual;
-              }, 0);
-            });
-            const efficiencyRatios = savedSessions.value.map((session, index) => {
-              const planned = plannedTimes[index];
-              const actual = actualTimes[index];
-              return actual > 0 ? (planned / actual) * 100 : 100;
-            });
+            const sessionTimes = savedSessions.value.map(session => session.totalTime);
+            const taskCounts = savedSessions.value.map(session => session.timers.length);
 
             if (efficiencyChartInstance) {
               efficiencyChartInstance.destroy();
@@ -852,23 +826,18 @@ function goBack(){
 
             const ctx = document.getElementById("efficiencyChart").getContext("2d");
             efficiencyChartInstance = new Chart(ctx, {
-              type: "bar",
+              type: "line",
               data: {
                 labels: sessionLabels,
                 datasets: [
                   {
-                    label: "Planned Time (seconds)",
-                    data: plannedTimes,
-                    backgroundColor: "rgba(54, 162, 235, 0.6)",
-                    borderColor: "rgba(54, 162, 235, 1)",
-                    borderWidth: 1,
-                  },
-                  {
-                    label: "Actual Time (seconds)",
-                    data: actualTimes,
-                    backgroundColor: "rgba(255, 99, 132, 0.6)",
-                    borderColor: "rgba(255, 99, 132, 1)",
-                    borderWidth: 1,
+                    label: "Time Spent (seconds)",
+                    data: sessionTimes,
+                    backgroundColor: "rgba(75, 192, 192, 0.2)",
+                    borderColor: "rgba(75, 192, 192, 1)",
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
                   },
                 ],
               },
@@ -878,8 +847,18 @@ function goBack(){
                 scales: {
                   y: {
                     beginAtZero: true,
+                    title: {
+                      display: true,
+                      text: 'Time (seconds)',
+                      color: "white",
+                    },
                     ticks: {
                       color: "white",
+                      callback: function(value) {
+                        const mins = Math.floor(value / 60);
+                        const secs = value % 60;
+                        return mins + ':' + secs.toString().padStart(2, '0');
+                      }
                     },
                     grid: {
                       color: "rgba(255, 255, 255, 0.1)",
@@ -902,12 +881,15 @@ function goBack(){
                   },
                   tooltip: {
                     callbacks: {
-                      afterLabel: function(context) {
-                        if (context.datasetIndex === 1) {
-                          const efficiency = efficiencyRatios[context.dataIndex];
-                          return `Efficiency: ${efficiency.toFixed(1)}%`;
-                        }
-                      },
+                      label: function(context) {
+                        const mins = Math.floor(context.parsed.y / 60);
+                        const secs = context.parsed.y % 60;
+                        const tasks = taskCounts[context.dataIndex];
+                        return [
+                          `Time: ${mins}:${secs.toString().padStart(2, '0')}`,
+                          `Tasks: ${tasks}`
+                        ];
+                      }
                     },
                   },
                 },
@@ -920,6 +902,48 @@ function goBack(){
           function closeEfficiencyGraph() {
             showEfficiencyModal.value = false;
           }
+
+          // Setup keyboard shortcuts
+          function handleGlobalKeyDown(e) {
+            // Don't trigger shortcuts when typing in textarea
+            if (document.activeElement.tagName === "TEXTAREA") {
+              return;
+            }
+
+            // Global shortcuts
+            if (e.key === "h" || e.key === "H") {
+              e.preventDefault();
+              showEfficiencyGraph();
+              return;
+            }
+            if (e.key === "m" || e.key === "M") {
+              e.preventDefault();
+              toggleMenu();
+              return;
+            }
+
+            // Timer-specific shortcuts
+            if (isTimerActive.value) {
+              if (e.key === " ") {
+                e.preventDefault();
+                pauseTimer();
+                return;
+              }
+              if (e.key === "ArrowRight" && currentTimerIndex.value < timers.value.length - 1) {
+                e.preventDefault();
+                skipTimer();
+                return;
+              }
+              if (e.key === "ArrowLeft" && currentTimerIndex.value > 0) {
+                e.preventDefault();
+                goBack();
+                return;
+              }
+            }
+          }
+
+          // Register keyboard listener
+          window.addEventListener("keydown", handleGlobalKeyDown);
 
           return {
             timerInput,
