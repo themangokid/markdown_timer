@@ -1,172 +1,848 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Timer Dashboard</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
-      rel="stylesheet"
-    />
-    <style>
-      body {
-        font-family: "Roboto Mono", monospace;
-      }
-      .template-box {
-        cursor: pointer;
-        transition: transform 0.2s;
-      }
-      .template-box:hover {
-        transform: scale(1.05);
-      }
-      .template-content {
-        display: none;
-        margin-top: 1rem;
-        transition: all 0.3s ease-in-out;
-      }
-      .template-box.expanded .template-content {
-        display: block;
-      }
-      #drop-zone {
-        border: 2px dashed #4a5568;
-        padding: 20px;
-        text-align: center;
-        cursor: pointer;
-        margin-bottom: 20px;
-        transition: background-color 0.3s ease;
-      }
-      #drop-zone.dragover {
-        background-color: #2d3748;
-      }
-    </style>
-  </head>
-  <body
-    class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center"
-  >
-    <h1 class="text-4xl font-bold mb-8">Timer Dashboard</h1>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MD-Timer</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-    <!-- Drop Zone for File Upload -->
-    <div id="drop-zone" class="mb-4">
-      Drag and drop your Markdown file here or click to select
-    </div>
-    <input type="file" id="fileInput" class="hidden" />
+    * {
+      font-family: 'Inter', sans-serif;
+    }
 
-    <div
-      id="template-container"
-      class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-    >
-      <!-- Templates will be dynamically loaded here -->
-    </div>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
 
-    <div class="mt-8 flex space-x-4">
-      <a href="graph.html" class="text-lg text-blue-400 hover:underline"
-        >View Graphs</a
-      >
-      <button
-        onclick="resetFile()"
-        class="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-full font-bold"
-      >
-        Reset File
-      </button>
-    </div>
+    .task-item {
+      cursor: grab;
+      transition: all 0.2s;
+    }
 
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        const savedMarkdown = localStorage.getItem("savedMarkdown");
-        if (savedMarkdown) {
-          loadTemplates(savedMarkdown);
-        } else {
-          document
-            .getElementById("fileInput")
-            .addEventListener("change", handleFileSelect);
-          setupDragAndDrop();
-        }
-      });
+    .task-item:active {
+      cursor: grabbing;
+    }
 
-      function handleFileSelect(event) {
-        const file = event.target.files[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = function (e) {
-            const markdownContent = e.target.result;
-            localStorage.setItem("savedMarkdown", markdownContent); // Save to localStorage
-            loadTemplates(markdownContent);
-          };
-          reader.readAsText(file);
-        }
+    .task-item.dragging {
+      opacity: 0.5;
+    }
+
+    .task-item:hover {
+      transform: translateX(4px);
+    }
+
+    .floating-btn {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 50;
+      box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+    }
+
+    @media (max-width: 640px) {
+      .floating-btn {
+        bottom: 16px;
+        right: 16px;
       }
+    }
 
-      function setupDragAndDrop() {
-        const dropZone = document.getElementById("drop-zone");
+    .minimized-timer {
+      position: fixed;
+      bottom: 24px;
+      left: 24px;
+      z-index: 40;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
 
-        dropZone.addEventListener("click", () =>
-          document.getElementById("fileInput").click(),
-        );
+    .minimized-timer:hover {
+      transform: scale(1.05);
+    }
 
-        dropZone.addEventListener("dragover", function (event) {
-          event.preventDefault();
-          dropZone.classList.add("dragover");
+    .chart-tooltip {
+      background: rgba(0, 0, 0, 0.9);
+      padding: 8px 12px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+  <div id="app"></div>
+
+  <script>
+    const { createApp, ref, computed, onMounted, watch } = Vue;
+
+    createApp({
+      setup() {
+        // State
+        const timerInput = ref('');
+        const timers = ref([]);
+        const isEditMode = ref(true);
+        const isTimerRunning = ref(false);
+        const currentIndex = ref(0);
+        const isPaused = ref(false);
+        const isMinimized = ref(false);
+        const showScore = ref(false);
+        const showSettings = ref(false);
+        const showGraph = ref(false);
+        const tempo = ref(1.0);
+        const sessionData = ref([]);
+        const draggedIndex = ref(null);
+        let intervalId = null;
+        let chartInstance = null;
+
+        // Computed
+        const currentTimer = computed(() => timers.value[currentIndex.value] || null);
+
+        const totalTime = computed(() => {
+          return timers.value.reduce((sum, t) => sum + t.duration, 0);
         });
 
-        dropZone.addEventListener("dragleave", function (event) {
-          dropZone.classList.remove("dragover");
+        const completedCount = computed(() => {
+          return timers.value.filter(t => t.completed).length;
         });
 
-        dropZone.addEventListener("drop", function (event) {
-          event.preventDefault();
-          dropZone.classList.remove("dragover");
-          const file = event.dataTransfer.files[0];
-          if (file) {
-            const reader = new FileReader();
-            reader.onload = function (e) {
-              const markdownContent = e.target.result;
-              localStorage.setItem("savedMarkdown", markdownContent); // Save to localStorage
-              loadTemplates(markdownContent);
-            };
-            reader.readAsText(file);
+        const skippedCount = computed(() => {
+          return timers.value.filter(t => t.skipped).length;
+        });
+
+        const efficiency = computed(() => {
+          if (timers.value.length === 0) return 0;
+          const completed = timers.value.filter(t => t.completed && !t.skipped).length;
+          return Math.round((completed / timers.value.length) * 100);
+        });
+
+        const tempoLabel = computed(() => {
+          if (tempo.value === 0.8) return 'Fast (80%)';
+          if (tempo.value === 1.2) return 'Slow (120%)';
+          return 'Standard';
+        });
+
+        // Parse markdown input
+        const parseTimers = () => {
+          if (!timerInput.value.trim()) {
+            timers.value = [];
+            return;
           }
-        });
-      }
 
-      function loadTemplates(markdown) {
-        const container = document.getElementById("template-container");
-        container.innerHTML = ""; // Clear previous templates
-        const tasks = markdown.split("#").filter((task) => task.trim() !== "");
+          const lines = timerInput.value.split('\n').filter(l => l.trim());
+          timers.value = lines.map((line, idx) => {
+            const match = line.match(/^(\d+(?:\.\d+)?)\s*(sec|min|hour|h|m|s):\s*(.+)$/i);
+            if (!match) return null;
 
-        tasks.forEach((task, index) => {
-          const lines = task.trim().split("\n");
-          const title = lines.shift().trim();
-          const templateMarkdown = lines.join("\n").trim();
+            const [, num, unit, label] = match;
+            let seconds = parseFloat(num);
 
-          const templateBox = document.createElement("div");
-          templateBox.className =
-            "template-box px-6 py-4 bg-blue-600 hover:bg-blue-700 rounded-lg shadow-lg text-center text-xl font-bold mb-4";
-          templateBox.innerHTML = `
-                    <div class="template-header">${title}</div>
-                    <div class="template-content">
-                        <pre class="text-left bg-gray-800 p-4 rounded">${templateMarkdown}</pre>
-                        <button class="mt-4 px-4 py-2 bg-green-500 hover:bg-green-600 rounded-full font-bold" onclick="useTemplate('${encodeURIComponent(templateMarkdown)}')">Use Template</button>
-                    </div>
-                `;
+            if (unit.toLowerCase().startsWith('m')) seconds *= 60;
+            else if (unit.toLowerCase().startsWith('h')) seconds *= 3600;
 
-          templateBox.addEventListener("click", function () {
-            this.classList.toggle("expanded");
+            seconds = Math.round(seconds * tempo.value);
+
+            return {
+              id: Date.now() + idx,
+              label: label.trim().charAt(0).toUpperCase() + label.trim().slice(1),
+              duration: seconds,
+              remaining: seconds,
+              completed: false,
+              skipped: false,
+              startTime: null,
+              endTime: null
+            };
+          }).filter(Boolean);
+        };
+
+        // Timer controls
+        const startTimer = () => {
+          if (timers.value.length === 0) return;
+
+          isTimerRunning.value = true;
+          isMinimized.value = false;
+          currentIndex.value = 0;
+
+          timers.value.forEach(t => {
+            t.completed = false;
+            t.skipped = false;
+            t.remaining = t.duration;
+            t.startTime = null;
+            t.endTime = null;
           });
 
-          container.appendChild(templateBox);
+          runTimer();
+        };
+
+        const runTimer = () => {
+          if (currentIndex.value >= timers.value.length) {
+            stopTimer();
+            return;
+          }
+
+          const timer = timers.value[currentIndex.value];
+          timer.startTime = new Date().toLocaleTimeString();
+
+          intervalId = setInterval(() => {
+            if (!isPaused.value && timer.remaining > 0) {
+              timer.remaining--;
+
+              // Update session data in real-time
+              updateSessionData();
+            }
+
+            if (timer.remaining <= 0) {
+              clearInterval(intervalId);
+              timer.completed = true;
+              timer.endTime = new Date().toLocaleTimeString();
+              currentIndex.value++;
+              runTimer();
+            }
+          }, 1000);
+        };
+
+        const pauseTimer = () => {
+          isPaused.value = !isPaused.value;
+        };
+
+        const skipTimer = () => {
+          if (currentTimer.value) {
+            clearInterval(intervalId);
+            currentTimer.value.skipped = true;
+            currentTimer.value.completed = true;
+            currentTimer.value.endTime = new Date().toLocaleTimeString();
+            currentIndex.value++;
+            runTimer();
+          }
+        };
+
+        const previousTimer = () => {
+          if (currentIndex.value > 0) {
+            clearInterval(intervalId);
+            currentIndex.value--;
+            timers.value[currentIndex.value].remaining = timers.value[currentIndex.value].duration;
+            timers.value[currentIndex.value].completed = false;
+            timers.value[currentIndex.value].skipped = false;
+            runTimer();
+          }
+        };
+
+        const stopTimer = () => {
+          clearInterval(intervalId);
+          isTimerRunning.value = false;
+          isPaused.value = false;
+          isMinimized.value = false;
+
+          // Save final session data
+          if (timers.value.length > 0) {
+            saveSessionData();
+          }
+
+          showScore.value = true;
+        };
+
+        const minimizeTimer = () => {
+          isMinimized.value = true;
+        };
+
+        const restoreTimer = () => {
+          isMinimized.value = false;
+        };
+
+        // Session data
+        const updateSessionData = () => {
+          const now = Date.now();
+          const dataPoint = {
+            timestamp: now,
+            completedTasks: timers.value.filter(t => t.completed && !t.skipped).length,
+            totalTasks: timers.value.length,
+            currentTask: currentIndex.value + 1
+          };
+
+          sessionData.value.push(dataPoint);
+
+          // Keep only last 100 data points for performance
+          if (sessionData.value.length > 100) {
+            sessionData.value.shift();
+          }
+        };
+
+        const saveSessionData = () => {
+          const sessions = JSON.parse(localStorage.getItem('mdTimerSessions') || '[]');
+          sessions.push({
+            date: new Date().toISOString(),
+            timers: timers.value.map(t => ({
+              label: t.label,
+              duration: t.duration,
+              completed: t.completed,
+              skipped: t.skipped
+            })),
+            completedCount: completedCount.value,
+            totalCount: timers.value.length,
+            efficiency: efficiency.value
+          });
+
+          // Keep last 50 sessions
+          if (sessions.length > 50) sessions.shift();
+
+          localStorage.setItem('mdTimerSessions', JSON.stringify(sessions));
+        };
+
+        // Graph
+        const toggleGraph = () => {
+          showGraph.value = !showGraph.value;
+
+          if (showGraph.value) {
+            setTimeout(() => renderGraph(), 100);
+          }
+        };
+
+        const renderGraph = () => {
+          const canvas = document.getElementById('sessionGraph');
+          if (!canvas) return;
+
+          const ctx = canvas.getContext('2d');
+
+          if (chartInstance) {
+            chartInstance.destroy();
+          }
+
+          const sessions = JSON.parse(localStorage.getItem('mdTimerSessions') || '[]');
+          const labels = sessions.map((s, i) => `S${i + 1}`);
+          const efficiencyData = sessions.map(s => s.efficiency);
+          const completionData = sessions.map(s => Math.round((s.completedCount / s.totalCount) * 100));
+
+          chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: labels.length > 0 ? labels : ['No data'],
+              datasets: [
+                {
+                  label: 'Efficiency %',
+                  data: efficiencyData.length > 0 ? efficiencyData : [0],
+                  borderColor: 'rgb(59, 130, 246)',
+                  backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                  tension: 0.4,
+                  fill: true
+                },
+                {
+                  label: 'Completion %',
+                  data: completionData.length > 0 ? completionData : [0],
+                  borderColor: 'rgb(16, 185, 129)',
+                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                  tension: 0.4,
+                  fill: true
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  labels: { color: 'white' }
+                }
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  max: 100,
+                  ticks: { color: 'white' },
+                  grid: { color: 'rgba(255,255,255,0.1)' }
+                },
+                x: {
+                  ticks: { color: 'white' },
+                  grid: { color: 'rgba(255,255,255,0.1)' }
+                }
+              }
+            }
+          });
+        };
+
+        // Editor controls
+        const insertTime = (timeStr) => {
+          const textarea = document.querySelector('textarea');
+          const pos = textarea?.selectionStart || timerInput.value.length;
+          const before = timerInput.value.substring(0, pos);
+          const after = timerInput.value.substring(pos);
+          timerInput.value = before + timeStr + ': ' + after;
+          saveToStorage();
+        };
+
+        const toggleMode = () => {
+          isEditMode.value = !isEditMode.value;
+          if (!isEditMode.value) {
+            parseTimers();
+          }
+        };
+
+        // Drag and drop
+        const handleDragStart = (index) => {
+          draggedIndex.value = index;
+        };
+
+        const handleDrop = (targetIndex) => {
+          if (draggedIndex.value === null) return;
+
+          const items = [...timers.value];
+          const draggedItem = items[draggedIndex.value];
+          items.splice(draggedIndex.value, 1);
+          items.splice(targetIndex, 0, draggedItem);
+          timers.value = items;
+
+          // Update input
+          updateInputFromTimers();
+          draggedIndex.value = null;
+        };
+
+        const updateInputFromTimers = () => {
+          timerInput.value = timers.value.map(t => {
+            const unit = t.duration >= 3600 ? 'hour' : t.duration >= 60 ? 'min' : 'sec';
+            const val = t.duration >= 3600 ? t.duration / 3600 : t.duration >= 60 ? t.duration / 60 : t.duration;
+            return `${val} ${unit}: ${t.label}`;
+          }).join('\n');
+          saveToStorage();
+        };
+
+        // Storage
+        const saveToStorage = () => {
+          localStorage.setItem('mdTimerInput', timerInput.value);
+          localStorage.setItem('mdTimerTempo', tempo.value.toString());
+          parseTimers();
+        };
+
+        const loadFromStorage = () => {
+          const saved = localStorage.getItem('mdTimerInput');
+          const savedTempo = localStorage.getItem('mdTimerTempo');
+
+          if (saved) timerInput.value = saved;
+          if (savedTempo) tempo.value = parseFloat(savedTempo);
+
+          parseTimers();
+        };
+
+        // Format time
+        const formatTime = (seconds) => {
+          const m = Math.floor(seconds / 60);
+          const s = seconds % 60;
+          return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        };
+
+        // Keyboard shortcuts
+        const handleKeyDown = (e) => {
+          if (e.target.tagName === 'TEXTAREA') return;
+
+          if (e.key === 'g' && isTimerRunning.value) {
+            e.preventDefault();
+            toggleGraph();
+          }
+
+          if (e.key === ' ' && isTimerRunning.value) {
+            e.preventDefault();
+            pauseTimer();
+          }
+
+          if (e.key === 'ArrowRight' && isTimerRunning.value) {
+            e.preventDefault();
+            skipTimer();
+          }
+
+          if (e.key === 'ArrowLeft' && isTimerRunning.value) {
+            e.preventDefault();
+            previousTimer();
+          }
+        };
+
+        // Lifecycle
+        onMounted(() => {
+          loadFromStorage();
+          window.addEventListener('keydown', handleKeyDown);
         });
-      }
 
-      function useTemplate(templateMarkdown) {
-        const decodedTemplate = decodeURIComponent(templateMarkdown);
-        localStorage.setItem("timerInput", decodedTemplate);
-        window.location.href = "timer.html"; // Redirect to the timer page
-      }
+        watch(tempo, () => {
+          saveToStorage();
+        });
 
-      function resetFile() {
-        localStorage.removeItem("savedMarkdown");
-        location.reload(); // Reload the page to reset the UI
-      }
-    </script>
-  </body>
+        return {
+          // State
+          timerInput,
+          timers,
+          isEditMode,
+          isTimerRunning,
+          currentIndex,
+          currentTimer,
+          isPaused,
+          isMinimized,
+          showScore,
+          showSettings,
+          showGraph,
+          tempo,
+          tempoLabel,
+
+          // Computed
+          totalTime,
+          completedCount,
+          skippedCount,
+          efficiency,
+
+          // Methods
+          formatTime,
+          parseTimers,
+          startTimer,
+          pauseTimer,
+          skipTimer,
+          previousTimer,
+          stopTimer,
+          minimizeTimer,
+          restoreTimer,
+          toggleGraph,
+          insertTime,
+          toggleMode,
+          handleDragStart,
+          handleDrop,
+          saveToStorage
+        };
+      },
+
+      template: `
+        <div class="min-h-screen p-4 pb-24">
+          <!-- Header -->
+          <div class="fixed top-0 left-0 right-0 bg-gray-900/95 backdrop-blur-sm z-40 border-b border-gray-800">
+            <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent">
+                  MD-Timer
+                </h1>
+                <span class="text-xs text-gray-400 hidden sm:inline">{{ tempoLabel }}</span>
+              </div>
+
+              <button
+                @click="showSettings = !showSettings"
+                class="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition text-sm font-medium"
+              >
+                Settings <i class="fas fa-bars"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Main Content -->
+          <div class="max-w-4xl mx-auto mt-20">
+            <!-- Editor Section -->
+            <div class="bg-gray-800 rounded-xl p-4 sm:p-6 mb-6">
+              <!-- Editor Controls -->
+              <div class="flex flex-wrap gap-2 mb-4">
+                <button
+                  @click="toggleMode"
+                  :class="['px-3 py-1.5 rounded-lg text-sm font-medium transition',
+                    isEditMode ? 'bg-green-500 text-white' : 'bg-gray-700 text-gray-300']"
+                >
+                  <i :class="isEditMode ? 'fas fa-edit' : 'fas fa-grip-vertical'"></i>
+                  {{ isEditMode ? 'Edit' : 'Arrange' }}
+                </button>
+
+                <template v-if="isEditMode">
+                  <button @click="insertTime('30 sec')" class="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 rounded-lg text-sm">
+                    +30s
+                  </button>
+                  <button @click="insertTime('1 min')" class="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 rounded-lg text-sm">
+                    +1m
+                  </button>
+                  <button @click="insertTime('5 min')" class="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 rounded-lg text-sm">
+                    +5m
+                  </button>
+                  <button @click="insertTime('1 hour')" class="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 rounded-lg text-sm">
+                    +1h
+                  </button>
+                </template>
+              </div>
+
+              <!-- Edit Mode: Textarea -->
+              <textarea
+                v-if="isEditMode"
+                v-model="timerInput"
+                @input="saveToStorage"
+                class="w-full h-64 sm:h-80 p-4 bg-gray-900 text-white rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                placeholder="30 sec: Break&#10;5 min: Deep work&#10;1 hour: Project time"
+              ></textarea>
+
+              <!-- Arrange Mode: Draggable List -->
+              <div v-else class="space-y-2">
+                <div
+                  v-for="(timer, index) in timers"
+                  :key="timer.id"
+                  draggable="true"
+                  @dragstart="handleDragStart(index)"
+                  @dragover.prevent
+                  @drop="handleDrop(index)"
+                  class="task-item flex items-center justify-between p-3 bg-gray-900 rounded-lg"
+                >
+                  <div class="flex items-center gap-3 flex-1 min-w-0">
+                    <i class="fas fa-grip-vertical text-gray-600"></i>
+                    <span class="truncate" :title="timer.label">{{ timer.label }}</span>
+                  </div>
+                  <span class="text-gray-400 text-sm ml-2">{{ formatTime(timer.duration) }}</span>
+                </div>
+                <p v-if="timers.length === 0" class="text-center text-gray-500 py-8">
+                  Switch to Edit mode to add timers
+                </p>
+              </div>
+
+              <!-- Summary -->
+              <div class="mt-4 pt-4 border-t border-gray-700 flex flex-wrap gap-4 text-sm">
+                <div>
+                  <span class="text-gray-400">Tasks:</span>
+                  <span class="font-semibold ml-1">{{ timers.length }}</span>
+                </div>
+                <div>
+                  <span class="text-gray-400">Total:</span>
+                  <span class="font-semibold ml-1">{{ formatTime(totalTime) }}</span>
+                </div>
+                <div>
+                  <span class="text-gray-400">Target:</span>
+                  <span class="font-semibold ml-1">{{ formatTime(totalTime) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Floating Start Button -->
+          <button
+            v-if="!isTimerRunning && timers.length > 0"
+            @click="startTimer"
+            class="floating-btn px-8 py-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-full text-xl font-bold transition transform hover:scale-105"
+          >
+            <i class="fas fa-play mr-2"></i> Start
+          </button>
+
+          <!-- Timer Display -->
+          <div
+            v-if="isTimerRunning && !isMinimized"
+            class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            @click="minimizeTimer"
+          >
+            <div
+              class="bg-gray-800 rounded-2xl p-6 sm:p-10 max-w-3xl w-full"
+              @click.stop
+            >
+              <h2 class="text-2xl sm:text-4xl font-bold mb-4 text-center truncate" :title="currentTimer?.label">
+                {{ currentTimer?.label }}
+              </h2>
+
+              <div class="text-6xl sm:text-8xl font-bold text-center mb-6 tabular-nums">
+                {{ formatTime(currentTimer?.remaining || 0) }}
+              </div>
+
+              <div class="text-center text-gray-400 mb-8">
+                Task {{ currentIndex + 1 }} of {{ timers.length }}
+              </div>
+
+              <!-- Timer Controls -->
+              <div class="flex flex-wrap justify-center gap-3 mb-4">
+                <button
+                  v-if="currentIndex > 0"
+                  @click="previousTimer"
+                  class="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg font-medium transition"
+                >
+                  <i class="fas fa-backward mr-2"></i>Back
+                </button>
+
+                <button
+                  @click="pauseTimer"
+                  class="px-6 py-3 bg-yellow-500 hover:bg-yellow-600 rounded-lg font-bold transition text-lg"
+                >
+                  <i :class="isPaused ? 'fas fa-play' : 'fas fa-pause'" class="mr-2"></i>
+                  {{ isPaused ? 'Resume' : 'Pause' }}
+                </button>
+
+                <button
+                  v-if="currentIndex < timers.length - 1"
+                  @click="skipTimer"
+                  class="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg font-medium transition"
+                >
+                  Skip<i class="fas fa-forward ml-2"></i>
+                </button>
+              </div>
+
+              <!-- Secondary Controls -->
+              <div class="flex flex-wrap justify-center gap-2">
+                <button
+                  @click="toggleGraph"
+                  class="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm font-medium transition"
+                >
+                  <i class="fas fa-chart-line mr-1"></i>Graph (G)
+                </button>
+                <button
+                  @click="minimizeTimer"
+                  class="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 rounded-lg text-sm font-medium transition"
+                >
+                  <i class="fas fa-minus mr-1"></i>Minimize
+                </button>
+                <button
+                  @click="stopTimer"
+                  class="px-3 py-1.5 bg-red-500 hover:bg-red-600 rounded-lg text-sm font-medium transition"
+                >
+                  <i class="fas fa-stop mr-1"></i>Stop
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Minimized Timer -->
+          <div
+            v-if="isTimerRunning && isMinimized"
+            @click="restoreTimer"
+            class="minimized-timer bg-gray-800 px-4 py-3 rounded-xl shadow-2xl border border-gray-700"
+          >
+            <div class="flex items-center gap-3">
+              <i :class="isPaused ? 'fas fa-pause' : 'fas fa-play'" class="text-green-400"></i>
+              <span class="font-bold text-lg">{{ formatTime(currentTimer?.remaining || 0) }}</span>
+              <span class="text-xs text-gray-400 hidden sm:inline">{{ currentTimer?.label?.substring(0, 15) }}...</span>
+            </div>
+          </div>
+
+          <!-- Graph Modal -->
+          <div
+            v-if="showGraph"
+            class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            @click="showGraph = false"
+          >
+            <div
+              class="bg-gray-800 rounded-2xl p-6 max-w-4xl w-full max-h-[80vh] overflow-y-auto"
+              @click.stop
+            >
+              <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-bold">Session Analytics</h3>
+                <button @click="showGraph = false" class="text-gray-400 hover:text-white">
+                  <i class="fas fa-times text-xl"></i>
+                </button>
+              </div>
+
+              <div class="h-64 sm:h-96">
+                <canvas id="sessionGraph"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Score Screen -->
+          <div
+            v-if="showScore"
+            class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            @click="showScore = false"
+          >
+            <div
+              class="bg-gray-800 rounded-2xl p-6 sm:p-8 max-w-lg w-full"
+              @click.stop
+            >
+              <h2 class="text-3xl font-bold mb-6 text-center">Session Complete!</h2>
+
+              <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-gray-900 p-4 rounded-xl text-center">
+                  <div class="text-3xl font-bold text-green-400">{{ completedCount }}</div>
+                  <div class="text-sm text-gray-400 mt-1">Completed</div>
+                </div>
+                <div class="bg-gray-900 p-4 rounded-xl text-center">
+                  <div class="text-3xl font-bold text-blue-400">{{ efficiency }}%</div>
+                  <div class="text-sm text-gray-400 mt-1">Efficiency</div>
+                </div>
+                <div class="bg-gray-900 p-4 rounded-xl text-center">
+                  <div class="text-3xl font-bold text-yellow-400">{{ skippedCount }}</div>
+                  <div class="text-sm text-gray-400 mt-1">Skipped</div>
+                </div>
+                <div class="bg-gray-900 p-4 rounded-xl text-center">
+                  <div class="text-3xl font-bold text-purple-400">{{ timers.length }}</div>
+                  <div class="text-sm text-gray-400 mt-1">Total Tasks</div>
+                </div>
+              </div>
+
+              <p class="text-center text-sm text-gray-400 mb-4">Click anywhere to continue</p>
+            </div>
+          </div>
+
+          <!-- Settings Modal -->
+          <div
+            v-if="showSettings"
+            class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            @click="showSettings = false"
+          >
+            <div
+              class="bg-gray-800 rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto"
+              @click.stop
+            >
+              <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold">Settings</h3>
+                <button @click="showSettings = false" class="text-gray-400 hover:text-white">
+                  <i class="fas fa-times text-xl"></i>
+                </button>
+              </div>
+
+              <!-- Tempo Settings -->
+              <div class="mb-6">
+                <h4 class="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <i class="fas fa-tachometer-alt"></i>
+                  Schedule Tempo
+                </h4>
+                <p class="text-sm text-gray-400 mb-3">Adjust task durations</p>
+
+                <div class="space-y-2">
+                  <label
+                    class="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition"
+                    :class="tempo === 0.8 ? 'bg-green-600' : 'bg-gray-700 hover:bg-gray-600'"
+                  >
+                    <input type="radio" :value="0.8" v-model="tempo" class="w-4 h-4">
+                    <span><i class="fas fa-running mr-2"></i>Fast (80%)</span>
+                  </label>
+
+                  <label
+                    class="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition"
+                    :class="tempo === 1.0 ? 'bg-green-600' : 'bg-gray-700 hover:bg-gray-600'"
+                  >
+                    <input type="radio" :value="1.0" v-model="tempo" class="w-4 h-4">
+                    <span><i class="fas fa-walking mr-2"></i>Standard (100%)</span>
+                  </label>
+
+                  <label
+                    class="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition"
+                    :class="tempo === 1.2 ? 'bg-green-600' : 'bg-gray-700 hover:bg-gray-600'"
+                  >
+                    <input type="radio" :value="1.2" v-model="tempo" class="w-4 h-4">
+                    <span><i class="fas fa-hiking mr-2"></i>Slow (120%)</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Keyboard Shortcuts -->
+              <div>
+                <h4 class="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <i class="fas fa-keyboard"></i>
+                  Keyboard Shortcuts
+                </h4>
+                <div class="space-y-2 text-sm">
+                  <div class="flex justify-between">
+                    <span class="text-gray-400">Pause/Resume</span>
+                    <kbd class="px-2 py-1 bg-gray-700 rounded">Space</kbd>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-400">Skip task</span>
+                    <kbd class="px-2 py-1 bg-gray-700 rounded">→</kbd>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-400">Previous task</span>
+                    <kbd class="px-2 py-1 bg-gray-700 rounded">←</kbd>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-400">Toggle graph</span>
+                    <kbd class="px-2 py-1 bg-gray-700 rounded">G</kbd>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `
+    }).mount('#app');
+  </script>
+</body>
 </html>

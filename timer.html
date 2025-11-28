@@ -74,29 +74,32 @@
     right: 20px;
     cursor: pointer;
     z-index: 1002;
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     color: white;
-    background-color: rgba(0, 0, 0, 0.7);
-    padding: 10px;
-    border-radius: 8px;
-    transition: background-color 0.3s;
+    background-color: rgba(0, 0, 0, 0.8);
+    padding: 14px 18px;
+    border-radius: 10px;
+    transition: all 0.3s;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
   }
   .hamburger-menu:hover {
-    background-color: rgba(0, 0, 0, 0.9);
+    background-color: rgba(0, 0, 0, 0.95);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
   }
   .menu-content {
     position: fixed;
-    top: 70px;
+    top: 80px;
     right: 20px;
     background-color: rgba(0, 0, 0, 0.95);
-    border-radius: 8px;
-    padding: 15px;
+    border-radius: 12px;
+    padding: 20px;
     display: none;
-    max-width: 400px;
-    min-width: 320px;
+    max-width: 450px;
+    min-width: 360px;
     max-height: 80vh;
     overflow-y: auto;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
     z-index: 1001;
   }
   .menu-content.active {
@@ -145,74 +148,74 @@
         <i class="fas fa-bars text-2xl"></i>
       </div>
       <div :class="{'menu-content': true, 'active': isMenuActive}">
-        <h3 class="text-xl font-bold mb-4">Settings</h3>
+        <h3 class="text-2xl font-bold mb-5">Settings</h3>
 
         <!-- Tempo Settings -->
-        <div class="mb-4 p-3 bg-gray-700 rounded-lg">
-          <h4 class="text-lg font-bold mb-2">
+        <div class="mb-5 p-4 bg-gray-700 rounded-lg">
+          <h4 class="text-xl font-bold mb-3">
             <i class="fas fa-tachometer-alt mr-2"></i>Schedule Tempo
           </h4>
-          <p class="text-xs text-gray-400 mb-3">Adjust task durations for your pace</p>
-          <div class="flex flex-col space-y-2">
-            <label class="flex items-center cursor-pointer p-2 rounded hover:bg-gray-600 transition" :class="{'bg-green-600': selectedTempo === '0.8'}">
+          <p class="text-sm text-gray-400 mb-4">Adjust task durations for your pace</p>
+          <div class="flex flex-col space-y-3">
+            <label class="flex items-center cursor-pointer p-3 rounded hover:bg-gray-600 transition text-base" :class="{'bg-green-600': selectedTempo === '0.8'}">
               <input
                 type="radio"
                 name="tempo"
                 value="0.8"
                 v-model="selectedTempo"
                 @change="saveTempoSettings"
-                class="mr-3"
+                class="mr-3 w-4 h-4"
               />
               <span>
-                <i class="fas fa-running mr-1"></i>Fast (80% time)
+                <i class="fas fa-running mr-2"></i>Fast (80% time)
               </span>
             </label>
-            <label class="flex items-center cursor-pointer p-2 rounded hover:bg-gray-600 transition" :class="{'bg-green-600': selectedTempo === '1.0'}">
+            <label class="flex items-center cursor-pointer p-3 rounded hover:bg-gray-600 transition text-base" :class="{'bg-green-600': selectedTempo === '1.0'}">
               <input
                 type="radio"
                 name="tempo"
                 value="1.0"
                 v-model="selectedTempo"
                 @change="saveTempoSettings"
-                class="mr-3"
+                class="mr-3 w-4 h-4"
               />
               <span>
-                <i class="fas fa-walking mr-1"></i>Standard (100% time)
+                <i class="fas fa-walking mr-2"></i>Standard (100% time)
               </span>
             </label>
-            <label class="flex items-center cursor-pointer p-2 rounded hover:bg-gray-600 transition" :class="{'bg-green-600': selectedTempo === '1.2'}">
+            <label class="flex items-center cursor-pointer p-3 rounded hover:bg-gray-600 transition text-base" :class="{'bg-green-600': selectedTempo === '1.2'}">
               <input
                 type="radio"
                 name="tempo"
                 value="1.2"
                 v-model="selectedTempo"
                 @change="saveTempoSettings"
-                class="mr-3"
+                class="mr-3 w-4 h-4"
               />
               <span>
-                <i class="fas fa-hiking mr-1"></i>Slow (120% time)
+                <i class="fas fa-hiking mr-2"></i>Slow (120% time)
               </span>
             </label>
           </div>
         </div>
 
         <!-- Efficiency Graph -->
-        <div class="mb-4 p-3 bg-gray-700 rounded-lg">
-          <h4 class="text-lg font-bold mb-2">Session History</h4>
+        <div class="mb-5 p-4 bg-gray-700 rounded-lg">
+          <h4 class="text-xl font-bold mb-3">Session History</h4>
           <button
             @click="showEfficiencyGraph"
-            class="w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-full text-sm font-bold"
+            class="w-full px-5 py-3 bg-purple-500 hover:bg-purple-600 rounded-full text-base font-bold"
           >
             <i class="fas fa-chart-line mr-2"></i>View History (H)
           </button>
         </div>
 
         <!-- Keyboard Shortcuts -->
-        <div class="mb-4 p-3 bg-gray-700 rounded-lg">
-          <h4 class="text-lg font-bold mb-2">
+        <div class="mb-5 p-4 bg-gray-700 rounded-lg">
+          <h4 class="text-xl font-bold mb-3">
             <i class="fas fa-keyboard mr-2"></i>Keyboard Shortcuts
           </h4>
-          <div class="text-xs text-gray-300 space-y-1">
+          <div class="text-sm text-gray-300 space-y-2">
             <p><kbd class="bg-gray-600 px-2 py-1 rounded">Space</kbd> Start/Pause timer</p>
             <p><kbd class="bg-gray-600 px-2 py-1 rounded">→</kbd> Skip task</p>
             <p><kbd class="bg-gray-600 px-2 py-1 rounded">←</kbd> Previous task</p>
@@ -273,10 +276,10 @@
         </div>
       </div>
 
-      <div class="text-center p-4 bg-gray-800 rounded-lg mb-8">
-        <h1 class="text-4xl font-bold">Markdown Timer Editor</h1>
-        <div class="text-sm font-normal text-gray-400 mt-2">
-          <i class="fas fa-tachometer-alt mr-1"></i>
+      <div class="text-center p-6 bg-gray-800 rounded-lg mb-8">
+        <h1 class="text-5xl font-bold">Markdown Timer Editor</h1>
+        <div class="text-base font-normal text-gray-400 mt-3">
+          <i class="fas fa-tachometer-alt mr-2"></i>
           <span>{{ selectedTempo === '0.8' ? 'Fast' : selectedTempo === '1.2' ? 'Slow' : 'Standard' }} Tempo</span>
         </div>
       </div>
@@ -285,21 +288,21 @@
         <textarea
           v-model="timerInput"
           @input="saveToLocalStorage"
-          class="w-full h-64 p-4 bg-gray-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="w-full h-80 p-5 bg-gray-800 text-white text-lg rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="Enter your timer markdown here..."
         ></textarea>
 
-        <div class="w-full bg-gray-800 p-4 rounded-lg">
-          <h2 class="text-2xl font-bold mb-4">Timer Overview</h2>
+        <div class="w-full bg-gray-800 p-5 rounded-lg">
+          <h2 class="text-3xl font-bold mb-5">Timer Overview</h2>
           <div
             v-for="(timer, index) in timers"
             :key="index"
-            class="flex justify-between items-center mb-2"
+            class="flex justify-between items-center mb-3 text-lg"
           >
             <span>{{ timer.label }}</span>
-            <span>{{ formatTime(timer.duration) }}</span>
+            <span class="font-semibold">{{ formatTime(timer.duration) }}</span>
           </div>
-          <div class="mt-4">
+          <div class="mt-5 text-xl">
             <strong>Total Task Time:</strong> {{ formatTime(totalTime) }}
           </div>
         </div>
@@ -307,7 +310,7 @@
         <div class="flex space-x-4">
           <button
             @click="startTimers"
-            class="px-6 py-3 bg-green-500 hover:bg-green-600 rounded-full text-xl font-bold transition duration-300 ease-in-out transform hover:scale-105"
+            class="px-8 py-4 bg-green-500 hover:bg-green-600 rounded-full text-2xl font-bold transition duration-300 ease-in-out transform hover:scale-105 shadow-lg"
           >
             <i class="fas fa-play mr-2"></i> Start (Space)
           </button>
@@ -320,40 +323,40 @@
         class="fixed inset-0 timer-overlay flex items-center justify-center"
         @click="toggleTimerDisplay"
       >
-        <div class="bg-gray-800 p-8 rounded-xl shadow-lg text-center">
-          <h2 class="text-3xl font-bold mb-4">{{ currentTimer.label }}</h2>
-          <p class="text-9xl font-bold mb-6">
+        <div class="bg-gray-800 p-10 rounded-xl shadow-lg text-center max-w-4xl">
+          <h2 class="text-4xl font-bold mb-6">{{ currentTimer.label }}</h2>
+          <p class="text-9xl font-bold mb-8">
             {{ formatTime(currentTimer.remainingTime) }}
           </p>
-          <p class="text-xl">{{ getNextTimerLabel() }}</p>
-          <div class="mt-6 flex justify-center space-x-4">
+          <p class="text-2xl mb-8">{{ getNextTimerLabel() }}</p>
+          <div class="mt-8 flex flex-wrap justify-center gap-4">
 
             <button
               @click.stop="goBack"
 
-              class="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-full text-lg font-bold transition duration-300 ease-in-out"
+              class="px-6 py-3 bg-blue-500 hover:bg-blue-600 rounded-full text-xl font-bold transition duration-300 ease-in-out shadow-md"
             >
               <i class="fas fa-backward mr-2"></i>Back (←)
             </button>
             <button
               @click.stop="pauseTimer"
-              class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 rounded-full text-lg font-bold transition duration-300 ease-in-out"
+              class="px-8 py-4 bg-yellow-500 hover:bg-yellow-600 rounded-full text-2xl font-bold transition duration-300 ease-in-out shadow-md"
             >
               <i class="fas fa-pause mr-2"></i>Pause (Space)
             </button>
             <button
               @click.stop="skipTimer"
-              class="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-full text-lg font-bold transition duration-300 ease-in-out"
+              class="px-6 py-3 bg-blue-500 hover:bg-blue-600 rounded-full text-xl font-bold transition duration-300 ease-in-out shadow-md"
             >
               <i class="fas fa-forward mr-2"></i>Skip (→)
             </button>
-            
+
             <!-- Break -->
              <br>
 
           <button
             @click="stopTimers"
-            class="px-6 py-3 bg-red-500 hover:bg-red-600 rounded-full text-xl font-bold transition duration-300 ease-in-out transform hover:scale-105"
+            class="px-8 py-4 bg-red-500 hover:bg-red-600 rounded-full text-2xl font-bold transition duration-300 ease-in-out transform hover:scale-105 shadow-lg"
           >
             <i class="fas fa-stop mr-2"></i>Stop
           </button> 
@@ -373,35 +376,35 @@
         v-if="showScoreScreen"
         class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75"
       >
-        <div class="bg-gray-800 p-8 rounded-lg shadow-xl text-center">
-          <h2 class="text-3xl font-bold mb-6">Score Screen</h2>
-          <div v-for="(timer, index) in timers" :key="index" class="mb-4">
-            <p class="text-xl"><strong>{{ timer.label }}</strong></p>
-            <p>Started at: {{ timer.startTime }}</p>
-            <p>Finished at: {{ timer.endTime }}</p>
-            <p v-if="timer.skipTime !== null">
+        <div class="bg-gray-800 p-10 rounded-lg shadow-xl text-center max-w-2xl">
+          <h2 class="text-4xl font-bold mb-8">Score Screen</h2>
+          <div v-for="(timer, index) in timers" :key="index" class="mb-5">
+            <p class="text-2xl"><strong>{{ timer.label }}</strong></p>
+            <p class="text-base mt-2">Started at: {{ timer.startTime }}</p>
+            <p class="text-base">Finished at: {{ timer.endTime }}</p>
+            <p v-if="timer.skipTime !== null" class="text-base">
               Skipped at: {{ formatTime(timer.skipTime) }}
             </p>
-            <p v-if="timer.skipTime !== null">
+            <p v-if="timer.skipTime !== null" class="text-base">
               Time saved: {{ formatTime(timer.duration - timer.remainingTime) }}
             </p>
-            <hr class="my-2 border-gray-600" />
+            <hr class="my-3 border-gray-600" />
           </div>
-          <div class="mt-6">
-            <p class="text-lg">
+          <div class="mt-8">
+            <p class="text-xl mb-2">
               <strong>Session started at:</strong> {{ sessionStartTime }}
             </p>
-            <p class="text-lg">
+            <p class="text-xl mb-2">
               <strong>Session finished at:</strong> {{ sessionEndTime }}
             </p>
-            <p class="text-lg">
+            <p class="text-xl">
               <strong>Total time:</strong> {{ formatTime(totalTime -
               totalRemainingTime) }}
             </p>
           </div>
           <button
             @click="hideScoreScreen"
-            class="mt-6 px-6 py-3 bg-green-500 hover:bg-green-600 rounded-full text-xl font-bold transition duration-300 ease-in-out"
+            class="mt-8 px-8 py-4 bg-green-500 hover:bg-green-600 rounded-full text-2xl font-bold transition duration-300 ease-in-out shadow-lg"
           >
             Okay
           </button>
@@ -815,17 +818,22 @@ function goBack(){
               return;
             }
 
-            // Prepare data - simpler approach using session.totalTime
-            const sessionLabels = savedSessions.value.map((_, index) => `Session ${index + 1}`);
-            const sessionTimes = savedSessions.value.map(session => session.totalTime);
-            const taskCounts = savedSessions.value.map(session => session.timers.length);
+            // Show modal first
+            showEfficiencyModal.value = true;
 
-            if (efficiencyChartInstance) {
-              efficiencyChartInstance.destroy();
-            }
+            // Wait for DOM to update, then create chart
+            setTimeout(() => {
+              // Prepare data - simpler approach using session.totalTime
+              const sessionLabels = savedSessions.value.map((_, index) => `Session ${index + 1}`);
+              const sessionTimes = savedSessions.value.map(session => session.totalTime);
+              const taskCounts = savedSessions.value.map(session => session.timers.length);
 
-            const ctx = document.getElementById("efficiencyChart").getContext("2d");
-            efficiencyChartInstance = new Chart(ctx, {
+              if (efficiencyChartInstance) {
+                efficiencyChartInstance.destroy();
+              }
+
+              const ctx = document.getElementById("efficiencyChart").getContext("2d");
+              efficiencyChartInstance = new Chart(ctx, {
               type: "line",
               data: {
                 labels: sessionLabels,
@@ -895,8 +903,7 @@ function goBack(){
                 },
               },
             });
-
-            showEfficiencyModal.value = true;
+            }, 50); // End setTimeout
           }
 
           function closeEfficiencyGraph() {
