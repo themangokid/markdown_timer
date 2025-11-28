@@ -105,6 +105,27 @@
           return timers.value.reduce((sum, t) => sum + t.duration, 0);
         });
 
+        const targetTime = computed(() => {
+          if (!isTimerRunning.value) {
+            // When idle, calculate clock time when all tasks would finish
+            const now = new Date();
+            const totalSeconds = totalTime.value;
+            const targetDate = new Date(now.getTime() + totalSeconds * 1000);
+            return targetDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          }
+
+          // When running, calculate remaining time from current task onwards
+          let remaining = 0;
+          for (let i = currentIndex.value; i < timers.value.length; i++) {
+            remaining += timers.value[i].remaining;
+          }
+
+          // Return clock time when all remaining tasks will complete
+          const now = new Date();
+          const targetDate = new Date(now.getTime() + remaining * 1000);
+          return targetDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        });
+
         const completedCount = computed(() => {
           return timers.value.filter(t => t.completed).length;
         });
@@ -484,6 +505,7 @@
 
           // Computed
           totalTime,
+          targetTime,
           completedCount,
           skippedCount,
           efficiency,
@@ -602,7 +624,7 @@
                 </div>
                 <div>
                   <span class="text-gray-400">Target:</span>
-                  <span class="font-semibold ml-1">{{ formatTime(totalTime) }}</span>
+                  <span class="font-semibold ml-1">{{ targetTime }}</span>
                 </div>
               </div>
             </div>
