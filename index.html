@@ -450,11 +450,22 @@
         };
 
         const updateInputFromTimers = () => {
-          timerInput.value = timers.value.map(t => {
+          let output = [];
+          let lastRoutine = null;
+
+          timers.value.forEach(t => {
+            // Add routine header if it's different from the last one
+            if (t.routine && t.routine !== lastRoutine) {
+              output.push(`# ${t.routine}`);
+              lastRoutine = t.routine;
+            }
+
             const unit = t.duration >= 3600 ? 'hour' : t.duration >= 60 ? 'min' : 'sec';
             const val = t.duration >= 3600 ? t.duration / 3600 : t.duration >= 60 ? t.duration / 60 : t.duration;
-            return `${val} ${unit}: ${t.label}`;
-          }).join('\n');
+            output.push(`${val} ${unit}: ${t.label}`);
+          });
+
+          timerInput.value = output.join('\n');
           saveToStorage();
         };
 
@@ -847,7 +858,7 @@
                 v-model="timerInput"
                 @input="saveToStorage"
                 class="w-full h-64 sm:h-80 p-4 bg-gray-900 text-white rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                placeholder="30 sec: Break&#10;5 min: Deep work&#10;1 hour: Project time"
+                placeholder="# Morning&#10;30 sec: Break&#10;5 min: Deep work&#10;&#10;# Afternoon&#10;1 hour: Project time"
               ></textarea>
 
               <!-- Arrange Mode: Draggable List -->
