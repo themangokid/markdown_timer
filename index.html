@@ -931,12 +931,6 @@
               class="bg-gray-800 rounded-2xl p-6 sm:p-10 max-w-3xl w-full"
               @click.stop
             >
-              <!-- Routine Name (if exists) -->
-              <div v-if="currentTimer?.routine" class="flex items-center justify-center gap-2 mb-2">
-                <i class="fas fa-hashtag text-purple-400 text-sm"></i>
-                <span class="text-purple-400 text-lg font-semibold">{{ currentTimer.routine }}</span>
-              </div>
-
               <h2 class="text-2xl sm:text-4xl font-bold mb-4 text-center truncate" :title="currentTimer?.label">
                 {{ currentTimer?.label }}
               </h2>
@@ -945,8 +939,25 @@
                 {{ formatTime(currentTimer?.remaining || 0) }}
               </div>
 
-              <div class="text-center text-gray-400 mb-8">
-                Task {{ currentIndex + 1 }} of {{ timers.length }}
+              <div class="text-center text-gray-400 mb-2 flex items-center justify-center gap-2">
+                <span>Task {{ currentIndex + 1 }} of {{ timers.length }}</span>
+                <template v-if="currentTimer?.routine">
+                  <span class="text-gray-600">•</span>
+                  <i class="fas fa-hashtag text-purple-400 text-sm"></i>
+                  <span class="text-purple-400 font-semibold">{{ currentTimer.routine }}</span>
+                </template>
+              </div>
+
+              <!-- Stats Bar -->
+              <div class="text-center text-gray-400 mb-8 text-sm flex items-center justify-center gap-4">
+                <div>
+                  <span class="font-medium">Total:</span>
+                  <span class="ml-1">{{ formatTime(totalTime) }}</span>
+                </div>
+                <div>
+                  <span class="font-medium">Target:</span>
+                  <span class="ml-1">{{ targetTime }}</span>
+                </div>
               </div>
 
               <!-- Timer Controls -->
@@ -983,12 +994,6 @@
                   class="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm font-medium transition"
                 >
                   <i class="fas fa-chart-line mr-1"></i>Graph (G)
-                </button>
-                <button
-                  @click="minimizeTimer"
-                  class="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 rounded-lg text-sm font-medium transition"
-                >
-                  <i class="fas fa-minus mr-1"></i>Minimize
                 </button>
                 <button
                   @click="stopTimer"
