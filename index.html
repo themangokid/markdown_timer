@@ -4,6 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MD-Timer</title>
+
+  <!-- PWA Meta Tags -->
+  <meta name="description" content="A markdown-based task timer with routine support for productivity and time management">
+  <meta name="theme-color" content="#10b981">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MD-Timer">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
   <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
@@ -104,6 +115,14 @@
         let intervalId = null;
         let chartInstance = null;
 
+        // PWA state
+        let wakeLock = null;
+        let deferredPrompt = null;
+        const showInstallPrompt = ref(false);
+        const notificationPermission = ref('default');
+        let audioContext = null;
+        let notificationSound = null;
+
         // Computed
         const currentTimer = computed(() => timers.value[currentIndex.value] || null);
 
@@ -196,7 +215,7 @@
         };
 
         // Timer controls
-        const startTimer = () => {
+        const startTimer = async () => {
           if (timers.value.length === 0) return;
 
           isTimerRunning.value = true;
@@ -210,6 +229,12 @@
             t.startTime = null;
             t.endTime = null;
           });
+
+          // PWA features on start
+          await requestWakeLock();
+          await requestNotificationPermission();
+          updateMediaSession();
+          updateBadge();
 
           runTimer();
         };
@@ -235,7 +260,20 @@
               clearInterval(intervalId);
               timer.completed = true;
               timer.endTime = new Date().toLocaleTimeString();
+
+              // PWA notifications on task completion
+              playNotificationSound();
+              vibrate();
+              showNotification(
+                'Task Complete!',
+                `${timer.label} finished. ${timers.value.length - currentIndex.value - 1} tasks remaining.`
+              );
+              updateBadge();
+
               currentIndex.value++;
+              if (currentIndex.value < timers.value.length) {
+                updateMediaSession();
+              }
               runTimer();
             }
           }, 1000);
@@ -276,6 +314,12 @@
           // Save final session data
           if (timers.value.length > 0) {
             saveSessionData();
+          }
+
+          // Release PWA resources
+          releaseWakeLock();
+          if ('clearAppBadge' in navigator) {
+            navigator.clearAppBadge();
           }
 
           showScore.value = true;
@@ -691,10 +735,224 @@
           }
         };
 
+        // PWA Functions
+
+        // Service Worker Registration
+        const registerServiceWorker = async () => {
+          if ('serviceWorker' in navigator) {
+            try {
+              const registration = await navigator.serviceWorker.register('/sw.js');
+              console.log('Service Worker registered:', registration);
+            } catch (error) {
+              console.error('Service Worker registration failed:', error);
+            }
+          }
+        };
+
+        // Wake Lock API - Keep screen awake
+        const requestWakeLock = async () => {
+          if ('wakeLock' in navigator) {
+            try {
+              wakeLock = await navigator.wakeLock.request('screen');
+              console.log('Wake Lock acquired');
+
+              wakeLock.addEventListener('release', () => {
+                console.log('Wake Lock released');
+              });
+            } catch (error) {
+              console.error('Wake Lock request failed:', error);
+            }
+          }
+        };
+
+        const releaseWakeLock = () => {
+          if (wakeLock !== null) {
+            wakeLock.release();
+            wakeLock = null;
+          }
+        };
+
+        // Notification API
+        const requestNotificationPermission = async () => {
+          if ('Notification' in window) {
+            const permission = await Notification.requestPermission();
+            notificationPermission.value = permission;
+            return permission === 'granted';
+          }
+          return false;
+        };
+
+        const showNotification = (title, body) => {
+          if (notificationPermission.value === 'granted' && 'Notification' in window) {
+            const notification = new Notification(title, {
+              body: body,
+              icon: '/icons/icon-192.png',
+              badge: '/icons/icon-96.png',
+              tag: 'md-timer-task',
+              requireInteraction: false,
+              silent: false
+            });
+
+            notification.onclick = () => {
+              window.focus();
+              notification.close();
+            };
+          }
+        };
+
+        // Sound Notification
+        const initAudio = () => {
+          // Create a simple beep sound using Web Audio API
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        };
+
+        const playNotificationSound = () => {
+          if (!audioContext) {
+            try {
+              initAudio();
+            } catch (error) {
+              console.error('Audio context failed:', error);
+              return;
+            }
+          }
+
+          try {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+          } catch (error) {
+            console.error('Sound playback failed:', error);
+          }
+        };
+
+        // Vibration API
+        const vibrate = (pattern = [200, 100, 200]) => {
+          if ('vibrate' in navigator) {
+            navigator.vibrate(pattern);
+          }
+        };
+
+        // Badge API - Show task count on icon
+        const updateBadge = () => {
+          if ('setAppBadge' in navigator) {
+            const remaining = timers.value.length - completedCount.value;
+            if (remaining > 0 && isTimerRunning.value) {
+              navigator.setAppBadge(remaining);
+            } else {
+              navigator.clearAppBadge();
+            }
+          }
+        };
+
+        // Media Session API - Control from lock screen
+        const updateMediaSession = () => {
+          if ('mediaSession' in navigator && currentTimer.value) {
+            navigator.mediaSession.metadata = new MediaMetadata({
+              title: currentTimer.value.label,
+              artist: 'MD-Timer',
+              album: currentTimer.value.routine || 'Task Timer',
+              artwork: [
+                { src: '/icons/icon-96.png', sizes: '96x96', type: 'image/png' },
+                { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+                { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' }
+              ]
+            });
+
+            navigator.mediaSession.setActionHandler('play', () => {
+              if (isPaused.value) pauseTimer();
+            });
+
+            navigator.mediaSession.setActionHandler('pause', () => {
+              if (!isPaused.value) pauseTimer();
+            });
+
+            navigator.mediaSession.setActionHandler('previoustrack', () => {
+              if (currentIndex.value > 0) previousTimer();
+            });
+
+            navigator.mediaSession.setActionHandler('nexttrack', () => {
+              if (currentIndex.value < timers.value.length - 1) skipTimer();
+            });
+          }
+        };
+
+        // Install Prompt Handler
+        const handleInstallPrompt = () => {
+          if (deferredPrompt) {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+              if (choiceResult.outcome === 'accepted') {
+                console.log('App installed');
+              }
+              deferredPrompt = null;
+              showInstallPrompt.value = false;
+            });
+          }
+        };
+
+        const dismissInstallPrompt = () => {
+          showInstallPrompt.value = false;
+          localStorage.setItem('installPromptDismissed', 'true');
+        };
+
         // Lifecycle
         onMounted(() => {
           loadFromStorage();
           window.addEventListener('keydown', handleKeyDown);
+
+          // Initialize PWA
+          registerServiceWorker();
+
+          // Check notification permission
+          if ('Notification' in window) {
+            notificationPermission.value = Notification.permission;
+          }
+
+          // Install prompt event
+          window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const dismissed = localStorage.getItem('installPromptDismissed');
+            if (!dismissed) {
+              showInstallPrompt.value = true;
+            }
+          });
+
+          // Detect if app was installed
+          window.addEventListener('appinstalled', () => {
+            console.log('App was installed');
+            showInstallPrompt.value = false;
+          });
+
+          // Handle URL shortcuts
+          const urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.get('action') === 'start' && timers.value.length > 0) {
+            startTimer();
+          } else if (urlParams.get('action') === 'routines') {
+            loadRoutines();
+          }
+
+          // Initialize audio context on first user interaction
+          document.addEventListener('click', () => {
+            if (!audioContext) {
+              try {
+                initAudio();
+              } catch (e) {
+                console.log('Audio context init deferred');
+              }
+            }
+          }, { once: true });
         });
 
         watch(tempo, () => {
@@ -908,6 +1166,32 @@
                   <span class="text-gray-400">Target:</span>
                   <span class="font-semibold ml-1">{{ targetTime }}</span>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Install Prompt -->
+          <div
+            v-if="showInstallPrompt"
+            class="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-24 sm:w-96 bg-gradient-to-r from-blue-600 to-green-600 text-white rounded-xl p-4 shadow-2xl z-50 animate-slide-up"
+          >
+            <button
+              @click="dismissInstallPrompt"
+              class="absolute top-2 right-2 text-white hover:text-gray-200"
+            >
+              <i class="fas fa-times"></i>
+            </button>
+            <div class="flex items-start gap-3">
+              <i class="fas fa-download text-2xl mt-1"></i>
+              <div>
+                <h3 class="font-bold text-lg mb-1">Install MD-Timer</h3>
+                <p class="text-sm mb-3 opacity-90">Install as an app for offline access, notifications, and keep screen awake!</p>
+                <button
+                  @click="handleInstallPrompt"
+                  class="px-4 py-2 bg-white text-blue-600 rounded-lg font-semibold hover:bg-gray-100 transition"
+                >
+                  Install Now
+                </button>
               </div>
             </div>
           </div>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Generate Icons</title>
+</head>
+<body>
+  <h1>Icon Generator</h1>
+  <p>Open browser console and icons will be generated. Right-click each canvas and "Save image as..."</p>
+  <div id="icons"></div>
+
+  <script>
+    const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+    const container = document.getElementById('icons');
+
+    sizes.forEach(size => {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      // Background gradient
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#3b82f6');
+      gradient.addColorStop(1, '#10b981');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, size, size);
+
+      // Timer icon (clock)
+      ctx.strokeStyle = 'white';
+      ctx.fillStyle = 'white';
+      ctx.lineWidth = size / 20;
+
+      // Circle
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, size / 3, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Hour hand
+      ctx.beginPath();
+      ctx.moveTo(size / 2, size / 2);
+      ctx.lineTo(size / 2, size / 4);
+      ctx.stroke();
+
+      // Minute hand
+      ctx.beginPath();
+      ctx.moveTo(size / 2, size / 2);
+      ctx.lineTo(size / 2 + size / 5, size / 2);
+      ctx.stroke();
+
+      // Center dot
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, size / 30, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Add label
+      const label = document.createElement('p');
+      label.textContent = `icon-${size}.png`;
+      container.appendChild(label);
+      container.appendChild(canvas);
+      container.appendChild(document.createElement('br'));
+
+      // Download link
+      canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `icon-${size}.png`;
+        a.textContent = `Download icon-${size}.png`;
+        a.style.display = 'block';
+        a.style.marginBottom = '20px';
+        container.appendChild(a);
+      });
+    });
+  </script>
+</body>
+</html>
