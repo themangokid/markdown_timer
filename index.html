@@ -95,6 +95,12 @@
         const tempo = ref(1.0);
         const sessionData = ref([]);
         const draggedIndex = ref(null);
+        const expandedSession = ref(null);
+        const showArchive = ref(false);
+        const archivedData = ref([]);
+        const showRoutines = ref(false);
+        const routines = ref([]);
+        const routineName = ref('');
         let intervalId = null;
         let chartInstance = null;
 
@@ -389,7 +395,21 @@
           const pos = textarea?.selectionStart || timerInput.value.length;
           const before = timerInput.value.substring(0, pos);
           const after = timerInput.value.substring(pos);
-          timerInput.value = before + timeStr + ': ' + after;
+
+          // Add newline before if there's content before and it doesn't end with newline
+          const prefix = before && !before.endsWith('\n') ? '\n' : '';
+          // Add the time with a space for the label and newline after
+          timerInput.value = before + prefix + timeStr + ': \n' + after;
+
+          // Move cursor to after the colon and space, before the newline
+          setTimeout(() => {
+            if (textarea) {
+              const newPos = pos + prefix.length + timeStr.length + 2; // +2 for ': '
+              textarea.selectionStart = textarea.selectionEnd = newPos;
+              textarea.focus();
+            }
+          }, 0);
+
           saveToStorage();
         };
 
@@ -462,13 +482,15 @@
 
           const archive = JSON.parse(localStorage.getItem('mdTimerArchive') || '[]');
           const archiveEntry = {
+            id: Date.now(),
             date: new Date().toISOString(),
-            sessions: sessions
+            sessions: sessions,
+            sessionCount: sessions.length
           };
           archive.push(archiveEntry);
 
-          // Keep last 10 archives
-          if (archive.length > 10) archive.shift();
+          // Keep last 500 archives (should be well under 5MB)
+          if (archive.length > 500) archive.shift();
 
           localStorage.setItem('mdTimerArchive', JSON.stringify(archive));
           localStorage.removeItem('mdTimerSessions');
@@ -478,6 +500,148 @@
           // Refresh graph if open
           if (showGraph.value) {
             setTimeout(() => renderGraph(), 100);
+          }
+        };
+
+        const formatDate = (isoDate) => {
+          const date = new Date(isoDate);
+          const now = new Date();
+          const diffMs = now - date;
+          const diffMins = Math.floor(diffMs / 60000);
+          const diffHours = Math.floor(diffMs / 3600000);
+          const diffDays = Math.floor(diffMs / 86400000);
+
+          if (diffMins < 1) return 'Just now';
+          if (diffMins < 60) return `${diffMins}m ago`;
+          if (diffHours < 24) return `${diffHours}h ago`;
+          if (diffDays < 7) return `${diffDays}d ago`;
+
+          return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+        };
+
+        const toggleSessionExpand = (index) => {
+          expandedSession.value = expandedSession.value === index ? null : index;
+        };
+
+        const loadArchive = (archiveId) => {
+          const archive = JSON.parse(localStorage.getItem('mdTimerArchive') || '[]');
+          const archiveEntry = archive.find(a => a.id === archiveId);
+
+          if (!archiveEntry) {
+            alert('Archive not found');
+            return;
+          }
+
+          const confirmed = confirm(`Load ${archiveEntry.sessionCount} sessions from ${formatDate(archiveEntry.date)}? This will replace current sessions.`);
+          if (!confirmed) return;
+
+          localStorage.setItem('mdTimerSessions', JSON.stringify(archiveEntry.sessions));
+          showArchive.value = false;
+
+          alert('Archive loaded successfully!');
+
+          // Refresh graph if open
+          if (showGraph.value) {
+            setTimeout(() => renderGraph(), 100);
+          }
+        };
+
+        const deleteArchive = (archiveId) => {
+          const confirmed = confirm('Delete this archive permanently?');
+          if (!confirmed) return;
+
+          const archive = JSON.parse(localStorage.getItem('mdTimerArchive') || '[]');
+          const filtered = archive.filter(a => a.id !== archiveId);
+          localStorage.setItem('mdTimerArchive', JSON.stringify(filtered));
+
+          // Reload archives to reflect deletion
+          loadArchives();
+
+          alert('Archive deleted');
+        };
+
+        const loadArchives = () => {
+          try {
+            const archive = JSON.parse(localStorage.getItem('mdTimerArchive') || '[]');
+            archivedData.value = archive.reverse();
+            showArchive.value = true;
+            showSettings.value = false;
+          } catch (error) {
+            console.error('Failed to load archives:', error);
+            alert('Failed to load archives. localStorage may be corrupted.');
+          }
+        };
+
+        // Routine Management
+        const saveRoutine = () => {
+          if (!routineName.value.trim()) {
+            alert('Please enter a routine name');
+            return;
+          }
+
+          if (timers.value.length === 0) {
+            alert('No timers to save');
+            return;
+          }
+
+          const routine = {
+            id: Date.now(),
+            name: routineName.value.trim(),
+            timers: timers.value.map(t => ({
+              label: t.label,
+              duration: t.duration
+            })),
+            created: new Date().toISOString()
+          };
+
+          const savedRoutines = JSON.parse(localStorage.getItem('mdTimerRoutines') || '[]');
+          savedRoutines.push(routine);
+          localStorage.setItem('mdTimerRoutines', JSON.stringify(savedRoutines));
+
+          routineName.value = '';
+          loadRoutines();
+        };
+
+        const loadRoutine = (routineId) => {
+          const savedRoutines = JSON.parse(localStorage.getItem('mdTimerRoutines') || '[]');
+          const routine = savedRoutines.find(r => r.id === routineId);
+
+          if (!routine) {
+            alert('Routine not found');
+            return;
+          }
+
+          // Reconstruct timer input from routine
+          timerInput.value = routine.timers.map(t => {
+            const unit = t.duration >= 3600 ? 'hour' : t.duration >= 60 ? 'min' : 'sec';
+            const val = t.duration >= 3600 ? t.duration / 3600 : t.duration >= 60 ? t.duration / 60 : t.duration;
+            return `${val} ${unit}: ${t.label}`;
+          }).join('\n');
+
+          saveToStorage();
+          showRoutines.value = false;
+        };
+
+        const deleteRoutine = (routineId) => {
+          const confirmed = confirm('Delete this routine permanently?');
+          if (!confirmed) return;
+
+          const savedRoutines = JSON.parse(localStorage.getItem('mdTimerRoutines') || '[]');
+          const filtered = savedRoutines.filter(r => r.id !== routineId);
+          localStorage.setItem('mdTimerRoutines', JSON.stringify(filtered));
+
+          loadRoutines();
+        };
+
+        const loadRoutines = () => {
+          try {
+            const savedRoutines = JSON.parse(localStorage.getItem('mdTimerRoutines') || '[]');
+            routines.value = savedRoutines.reverse();
+            showRoutines.value = true;
+            showSettings.value = false;
+          } catch (error) {
+            console.error('Failed to load routines:', error);
+            alert('Failed to load routines. localStorage may be corrupted.');
           }
         };
 
@@ -531,6 +695,11 @@
           showGraph,
           tempo,
           tempoLabel,
+          expandedSession,
+          showArchive,
+          showRoutines,
+          routines,
+          routineName,
 
           // Computed
           totalTime,
@@ -541,6 +710,7 @@
 
           // Methods
           formatTime,
+          formatDate,
           parseTimers,
           startTimer,
           pauseTimer,
@@ -555,7 +725,14 @@
           handleDragStart,
           handleDrop,
           saveToStorage,
-          archiveSessions
+          archiveSessions,
+          toggleSessionExpand,
+          loadArchive,
+          deleteArchive,
+          saveRoutine,
+          loadRoutine,
+          deleteRoutine,
+          loadRoutines
         };
       },
 
@@ -595,18 +772,61 @@
                   {{ isEditMode ? 'Edit' : 'Arrange' }}
                 </button>
 
+                <template v-if="!isEditMode">
+                  <button
+                    @click="loadRoutines"
+                    class="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm font-medium transition"
+                  >
+                    <i class="fas fa-layer-group mr-1"></i>Routines
+                  </button>
+                </template>
+
                 <template v-if="isEditMode">
+                  <!-- Seconds -->
                   <button @click="insertTime('30 sec')" class="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 rounded-lg text-sm">
                     +30s
                   </button>
-                  <button @click="insertTime('1 min')" class="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 rounded-lg text-sm">
+                  <button @click="insertTime('45 sec')" class="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 rounded-lg text-sm">
+                    +45s
+                  </button>
+                  <!-- Minutes (short intervals) -->
+                  <button @click="insertTime('1 min')" class="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 rounded-lg text-sm">
                     +1m
                   </button>
-                  <button @click="insertTime('5 min')" class="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 rounded-lg text-sm">
+                  <button @click="insertTime('2 min')" class="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 rounded-lg text-sm">
+                    +2m
+                  </button>
+                  <button @click="insertTime('3 min')" class="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 rounded-lg text-sm">
+                    +3m
+                  </button>
+                  <button @click="insertTime('4 min')" class="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 rounded-lg text-sm">
+                    +4m
+                  </button>
+                  <button @click="insertTime('5 min')" class="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 rounded-lg text-sm">
                     +5m
                   </button>
-                  <button @click="insertTime('1 hour')" class="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 rounded-lg text-sm">
-                    +1h
+                  <button @click="insertTime('6 min')" class="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 rounded-lg text-sm">
+                    +6m
+                  </button>
+                  <button @click="insertTime('7 min')" class="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 rounded-lg text-sm">
+                    +7m
+                  </button>
+
+                  <!-- Minutes (longer intervals) -->
+                  <button @click="insertTime('10 min')" class="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm">
+                    +10m
+                  </button>
+                  <button @click="insertTime('15 min')" class="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm">
+                    +15m
+                  </button>
+                  <button @click="insertTime('20 min')" class="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm">
+                    +20m
+                  </button>
+                  <button @click="insertTime('25 min')" class="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm">
+                    +25m
+                  </button>
+                  <button @click="insertTime('30 min')" class="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm">
+                    +30m
                   </button>
                 </template>
               </div>
@@ -872,12 +1092,20 @@
                   Session Management
                 </h4>
                 <p class="text-sm text-gray-400 mb-3">Archive current sessions and start fresh</p>
-                <button
-                  @click="archiveSessions"
-                  class="w-full px-4 py-3 bg-orange-500 hover:bg-orange-600 rounded-lg font-medium transition"
-                >
-                  <i class="fas fa-archive mr-2"></i>Archive Sessions
-                </button>
+                <div class="space-y-2">
+                  <button
+                    @click="archiveSessions"
+                    class="w-full px-4 py-3 bg-orange-500 hover:bg-orange-600 rounded-lg font-medium transition"
+                  >
+                    <i class="fas fa-archive mr-2"></i>Archive Sessions
+                  </button>
+                  <button
+                    @click="loadArchives()"
+                    class="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg font-medium transition"
+                  >
+                    <i class="fas fa-folder-open mr-2"></i>View Archives
+                  </button>
+                </div>
               </div>
 
               <!-- Keyboard Shortcuts -->
@@ -904,6 +1132,161 @@
                     <kbd class="px-2 py-1 bg-gray-700 rounded">G</kbd>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Archive Modal -->
+          <div
+            v-if="showArchive"
+            class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            @click="showArchive = false"
+          >
+            <div
+              class="bg-gray-800 rounded-2xl p-6 max-w-4xl w-full max-h-[80vh] overflow-y-auto"
+              @click.stop
+            >
+              <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-bold">Archived Sessions</h3>
+                <button @click="showArchive = false" class="text-gray-400 hover:text-white">
+                  <i class="fas fa-times text-xl"></i>
+                </button>
+              </div>
+
+              <div class="space-y-2">
+                <div
+                  v-for="archive in archivedData"
+                  :key="archive.id"
+                  class="bg-gray-900 rounded-lg p-4"
+                >
+                  <div class="flex items-center justify-between mb-2">
+                    <div>
+                      <div class="font-semibold">{{ formatDate(archive.date) }}</div>
+                      <div class="text-sm text-gray-400">{{ archive.sessionCount }} sessions</div>
+                    </div>
+                    <div class="flex gap-2">
+                      <button
+                        @click="loadArchive(archive.id)"
+                        class="px-3 py-1.5 bg-green-500 hover:bg-green-600 rounded-lg text-sm font-medium transition"
+                      >
+                        <i class="fas fa-download mr-1"></i>Load
+                      </button>
+                      <button
+                        @click="deleteArchive(archive.id)"
+                        class="px-3 py-1.5 bg-red-500 hover:bg-red-600 rounded-lg text-sm font-medium transition"
+                      >
+                        <i class="fas fa-trash mr-1"></i>Delete
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Show efficiency stats -->
+                  <div class="flex gap-4 text-xs text-gray-400 mt-2">
+                    <span>Total: {{ archive.sessions.reduce((sum, s) => sum + s.totalCount, 0) }} tasks</span>
+                    <span>Avg Efficiency: {{ Math.round(archive.sessions.reduce((sum, s) => sum + s.efficiency, 0) / archive.sessions.length) }}%</span>
+                  </div>
+                </div>
+
+                <p v-if="archivedData.length === 0" class="text-center text-gray-500 py-8">
+                  No archives yet. Archive your current sessions to save them for later.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Routines Modal -->
+          <div
+            v-if="showRoutines"
+            class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            @click="showRoutines = false"
+          >
+            <div
+              class="bg-gray-800 rounded-2xl p-6 max-w-4xl w-full max-h-[80vh] overflow-y-auto"
+              @click.stop
+            >
+              <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-bold">Saved Routines</h3>
+                <button @click="showRoutines = false" class="text-gray-400 hover:text-white">
+                  <i class="fas fa-times text-xl"></i>
+                </button>
+              </div>
+
+              <!-- Save Current Routine -->
+              <div class="bg-gray-900 rounded-lg p-4 mb-4">
+                <h4 class="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <i class="fas fa-save"></i>
+                  Save Current Timers as Routine
+                </h4>
+                <div class="flex gap-2">
+                  <input
+                    v-model="routineName"
+                    type="text"
+                    placeholder="Enter routine name..."
+                    class="flex-1 px-4 py-2 bg-gray-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    @keyup.enter="saveRoutine"
+                  />
+                  <button
+                    @click="saveRoutine"
+                    class="px-6 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg font-medium transition"
+                  >
+                    <i class="fas fa-save mr-2"></i>Save
+                  </button>
+                </div>
+                <p class="text-xs text-gray-400 mt-2">
+                  Current timers ({{ timers.length }}): {{ timers.map(t => t.label).join(', ').substring(0, 60) }}{{ timers.length > 0 && timers.map(t => t.label).join(', ').length > 60 ? '...' : '' }}
+                </p>
+              </div>
+
+              <!-- Saved Routines List -->
+              <div class="space-y-2">
+                <div
+                  v-for="routine in routines"
+                  :key="routine.id"
+                  class="bg-gray-900 rounded-lg p-4"
+                >
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex-1 min-w-0">
+                      <div class="font-semibold text-lg flex items-center gap-2">
+                        <i class="fas fa-layer-group text-purple-400"></i>
+                        {{ routine.name }}
+                      </div>
+                      <div class="text-sm text-gray-400">
+                        {{ routine.timers.length }} timers · Created {{ formatDate(routine.created) }}
+                      </div>
+                    </div>
+                    <div class="flex gap-2 ml-4">
+                      <button
+                        @click="loadRoutine(routine.id)"
+                        class="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg text-sm font-medium transition"
+                      >
+                        <i class="fas fa-download mr-1"></i>Load
+                      </button>
+                      <button
+                        @click="deleteRoutine(routine.id)"
+                        class="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg text-sm font-medium transition"
+                      >
+                        <i class="fas fa-trash mr-1"></i>Delete
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Show routine timers -->
+                  <div class="mt-3 space-y-1">
+                    <div
+                      v-for="(timer, idx) in routine.timers"
+                      :key="idx"
+                      class="text-xs text-gray-400 flex items-center gap-2 pl-6"
+                    >
+                      <i class="fas fa-clock"></i>
+                      <span class="flex-1 truncate">{{ timer.label }}</span>
+                      <span class="text-gray-500">{{ formatTime(timer.duration) }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <p v-if="routines.length === 0" class="text-center text-gray-500 py-8">
+                  No routines saved yet. Save your current timers as a routine to reuse them later!
+                </p>
               </div>
             </div>
           </div>

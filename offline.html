@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<button onclick="f()">Run</button>
+<div id=o></div>
+<div id=run></div>
+<body style="background-color:grey;">
+    <script>
+        async function f() {
+            const w = await WebAssembly.instantiate(Uint8Array.from(atob(
+                'AGFzbQEAAAABBwFgAn9/AX8DAgEABwUBAWEAAAoJAQcAIAAgAWoL'), c => c.charCodeAt(0)));
+            o.innerHTML = w.instance.exports.a(5, 3)
+
+        }
+    </script>
+</body>
