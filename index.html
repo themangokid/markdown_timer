@@ -123,6 +123,10 @@
         let audioContext = null;
         let notificationSound = null;
 
+        // Settings state
+        const soundEnabled = ref(true);
+        const vibrationEnabled = ref(true);
+
         // Computed
         const currentTimer = computed(() => timers.value[currentIndex.value] || null);
 
@@ -247,6 +251,7 @@
 
           const timer = timers.value[currentIndex.value];
           timer.startTime = new Date().toLocaleTimeString();
+          console.log('Starting timer:', timer.label, 'Index:', currentIndex.value);
 
           intervalId = setInterval(() => {
             if (!isPaused.value && timer.remaining > 0) {
@@ -260,6 +265,7 @@
               clearInterval(intervalId);
               timer.completed = true;
               timer.endTime = new Date().toLocaleTimeString();
+              console.log('Timer completed:', timer.label);
 
               // PWA notifications on task completion
               playNotificationSound();
@@ -271,6 +277,7 @@
               updateBadge();
 
               currentIndex.value++;
+              console.log('Moving to next timer. New index:', currentIndex.value, 'Total timers:', timers.value.length);
               if (currentIndex.value < timers.value.length) {
                 updateMediaSession();
               }
@@ -517,15 +524,21 @@
         const saveToStorage = () => {
           localStorage.setItem('mdTimerInput', timerInput.value);
           localStorage.setItem('mdTimerTempo', tempo.value.toString());
+          localStorage.setItem('mdTimerSoundEnabled', soundEnabled.value.toString());
+          localStorage.setItem('mdTimerVibrationEnabled', vibrationEnabled.value.toString());
           parseTimers();
         };
 
         const loadFromStorage = () => {
           const saved = localStorage.getItem('mdTimerInput');
           const savedTempo = localStorage.getItem('mdTimerTempo');
+          const savedSound = localStorage.getItem('mdTimerSoundEnabled');
+          const savedVibration = localStorage.getItem('mdTimerVibrationEnabled');
 
           if (saved) timerInput.value = saved;
           if (savedTempo) tempo.value = parseFloat(savedTempo);
+          if (savedSound !== null) soundEnabled.value = savedSound === 'true';
+          if (savedVibration !== null) vibrationEnabled.value = savedVibration === 'true';
 
           parseTimers();
         };
@@ -807,6 +820,8 @@
         };
 
         const playNotificationSound = () => {
+          if (!soundEnabled.value) return;
+
           if (!audioContext) {
             try {
               initAudio();
@@ -838,6 +853,7 @@
 
         // Vibration API
         const vibrate = (pattern = [200, 100, 200]) => {
+          if (!vibrationEnabled.value) return;
           if ('vibrate' in navigator) {
             navigator.vibrate(pattern);
           }
@@ -979,6 +995,8 @@
           showRoutines,
           routines,
           routineName,
+          soundEnabled,
+          vibrationEnabled,
 
           // Computed
           totalTime,
@@ -1408,6 +1426,49 @@
                   >
                     <input type="radio" :value="1.2" v-model="tempo" class="w-4 h-4">
                     <span><i class="fas fa-hiking mr-2"></i>Slow (120%)</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Notifications Settings -->
+              <div class="mb-6">
+                <h4 class="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <i class="fas fa-bell"></i>
+                  Notifications
+                </h4>
+                <p class="text-sm text-gray-400 mb-3">Control sound and vibration alerts</p>
+
+                <div class="space-y-2">
+                  <label
+                    class="flex items-center justify-between p-3 rounded-lg cursor-pointer transition"
+                    :class="soundEnabled ? 'bg-green-600' : 'bg-gray-700 hover:bg-gray-600'"
+                  >
+                    <div class="flex items-center gap-3">
+                      <i class="fas fa-volume-up"></i>
+                      <span>Sound Alerts</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      v-model="soundEnabled"
+                      @change="saveToStorage"
+                      class="w-5 h-5"
+                    >
+                  </label>
+
+                  <label
+                    class="flex items-center justify-between p-3 rounded-lg cursor-pointer transition"
+                    :class="vibrationEnabled ? 'bg-green-600' : 'bg-gray-700 hover:bg-gray-600'"
+                  >
+                    <div class="flex items-center gap-3">
+                      <i class="fas fa-mobile-alt"></i>
+                      <span>Vibration (Mobile)</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      v-model="vibrationEnabled"
+                      @change="saveToStorage"
+                      class="w-5 h-5"
+                    >
                   </label>
                 </div>
               </div>
