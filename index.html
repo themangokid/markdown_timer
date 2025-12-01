@@ -920,6 +920,12 @@
               class="bg-gray-800 rounded-2xl p-6 sm:p-10 max-w-3xl w-full"
               @click.stop
             >
+              <!-- Routine Name (if exists) -->
+              <div v-if="currentTimer?.routine" class="flex items-center justify-center gap-2 mb-2">
+                <i class="fas fa-hashtag text-purple-400 text-sm"></i>
+                <span class="text-purple-400 text-lg font-semibold">{{ currentTimer.routine }}</span>
+              </div>
+
               <h2 class="text-2xl sm:text-4xl font-bold mb-4 text-center truncate" :title="currentTimer?.label">
                 {{ currentTimer?.label }}
               </h2>
