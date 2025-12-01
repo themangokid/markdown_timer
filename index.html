@@ -815,39 +815,41 @@
 
         // Sound Notification
         const initAudio = () => {
-          // Create a simple beep sound using Web Audio API
-          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          // Create HTML5 Audio element with notification.mp3 file
+          notificationSound = new Audio('/notification.mp3');
+          notificationSound.volume = 0.7;
+          notificationSound.preload = 'auto';
+
+          console.log('Audio initialized with notification.mp3');
         };
 
         const playNotificationSound = () => {
           if (!soundEnabled.value) return;
 
-          if (!audioContext) {
+          // Initialize audio if not already done
+          if (!notificationSound) {
             try {
               initAudio();
             } catch (error) {
-              console.error('Audio context failed:', error);
+              console.error('Audio init failed:', error);
               return;
             }
           }
 
+          // Play the notification sound
           try {
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
+            notificationSound.currentTime = 0; // Reset to start
+            const playPromise = notificationSound.play();
 
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-
-            oscillator.frequency.value = 800;
-            oscillator.type = 'sine';
-
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.5);
+            if (playPromise !== undefined) {
+              playPromise.then(() => {
+                console.log('Notification sound played successfully');
+              }).catch(error => {
+                console.error('Audio playback failed:', error);
+              });
+            }
           } catch (error) {
-            console.error('Sound playback failed:', error);
+            console.error('Audio playback error:', error);
           }
         };
 
@@ -1036,7 +1038,7 @@
       template: `
         <div class="min-h-screen p-4 pb-24">
           <!-- Header -->
-          <div class="fixed top-0 left-0 right-0 bg-gray-900/95 backdrop-blur-sm z-40 border-b border-gray-800">
+          <div class="fixed top-0 left-0 right-0 bg-gray-800 backdrop-blur-sm z-40 border-b border-gray-700">
             <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
               <div class="flex items-center gap-3">
                 <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent">
@@ -1047,7 +1049,7 @@
 
               <button
                 @click="showSettings = !showSettings"
-                class="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition text-sm font-medium"
+                class="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition text-sm font-medium"
               >
                 Settings <i class="fas fa-bars"></i>
               </button>
