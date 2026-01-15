@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MD-Timer Mini</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+    body { background: #111827; color: white; min-height: 100vh; padding: 1rem; }
+    .container { max-width: 42rem; margin: 0 auto; }
+    h1 { font-size: 1.5rem; font-weight: bold; margin-bottom: 1.5rem; text-align: center; background: linear-gradient(to right, #60a5fa, #34d399); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .card { background: #1f2937; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; }
+    .btn-group { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+    button { padding: 0.5rem 1rem; border: none; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 0.875rem; }
+    button:disabled { background: #374151; cursor: not-allowed; opacity: 0.5; }
+    .btn-blue { background: #3b82f6; color: white; }
+    .btn-blue:hover:not(:disabled) { background: #2563eb; }
+    .btn-indigo { background: #6366f1; color: white; }
+    .btn-indigo:hover:not(:disabled) { background: #4f46e5; }
+    .btn-green { background: #10b981; color: white; flex: 1; padding: 0.75rem; font-size: 1rem; }
+    .btn-green:hover:not(:disabled) { background: #059669; }
+    .btn-yellow { background: #f59e0b; color: white; padding: 0.75rem 1.5rem; font-size: 1rem; }
+    .btn-yellow:hover { background: #d97706; }
+    .btn-blue-lg { background: #3b82f6; color: white; padding: 0.75rem 1.5rem; font-size: 1rem; }
+    .btn-blue-lg:hover { background: #2563eb; }
+    .btn-red { background: #ef4444; color: white; padding: 0.75rem 1.5rem; font-size: 1rem; }
+    .btn-red:hover { background: #dc2626; }
+    .btn-purple { background: #8b5cf6; color: white; padding: 0.75rem 1rem; }
+    .btn-purple:hover { background: #7c3aed; }
+    .btn-orange { background: #f97316; color: white; padding: 0.75rem 1rem; }
+    .btn-orange:hover { background: #ea580c; }
+    textarea { width: 100%; height: 12rem; padding: 0.75rem; background: #111827; color: white; border: none; border-radius: 0.5rem; resize: none; font-family: 'Courier New', monospace; font-size: 0.875rem; }
+    textarea:focus { outline: 2px solid #3b82f6; }
+    .text-sm { font-size: 0.875rem; color: #9ca3af; margin-top: 0.5rem; }
+    .flex { display: flex; }
+    .gap-2 { gap: 0.5rem; }
+    .timer-display { text-align: center; }
+    .timer-display h2 { font-size: 1.25rem; font-weight: bold; margin-bottom: 1rem; }
+    .timer-display .time { font-size: 3.75rem; font-weight: bold; margin-bottom: 1rem; font-variant-numeric: tabular-nums; }
+    .timer-display .info { color: #9ca3af; margin-bottom: 1.5rem; }
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; text-align: center; }
+    .stat-card { background: #1f2937; padding: 0.75rem; border-radius: 0.5rem; }
+    .stat-value { font-size: 1.5rem; font-weight: bold; }
+    .stat-green { color: #34d399; }
+    .stat-blue { color: #60a5fa; }
+    .stat-label { font-size: 0.75rem; color: #9ca3af; margin-top: 0.25rem; }
+    .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; padding: 1rem; z-index: 50; }
+    .modal-content { background: #1f2937; border-radius: 0.5rem; padding: 1.5rem; max-width: 42rem; width: 100%; max-height: 80vh; overflow-y: auto; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .modal-header h3 { font-size: 1.25rem; font-weight: bold; }
+    .modal-close { background: none; border: none; color: #9ca3af; font-size: 1.5rem; cursor: pointer; padding: 0; width: 2rem; height: 2rem; }
+    .modal-close:hover { color: white; }
+    .chart-container { height: 16rem; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>MD-Timer Mini</h1>
+
+    <div id="editor" class="hidden">
+      <div class="card">
+        <div class="btn-group">
+          <button class="btn-blue" onclick="app.insert('1 min')">+1m</button>
+          <button class="btn-blue" onclick="app.insert('5 min')">+5m</button>
+          <button class="btn-indigo" onclick="app.insert('10 min')">+10m</button>
+          <button class="btn-indigo" onclick="app.insert('25 min')">+25m</button>
+        </div>
+        <textarea id="input" placeholder="5 min: Deep work&#10;1 min: Break&#10;25 min: Pomodoro"></textarea>
+        <div class="text-sm">Tasks: <span id="taskCount">0</span></div>
+      </div>
+
+      <div class="flex gap-2">
+        <button class="btn-green" onclick="app.start()" id="startBtn">Start</button>
+        <button class="btn-purple" onclick="app.graph()">Graph</button>
+        <button class="btn-orange" onclick="app.archive()">Archive</button>
+      </div>
+    </div>
+
+    <div id="timer" class="hidden">
+      <div class="card timer-display">
+        <h2 id="timerLabel"></h2>
+        <div class="time" id="timerTime">00:00</div>
+        <div class="info">Task <span id="timerIdx">1</span> of <span id="timerTotal">1</span></div>
+        <div class="flex gap-2" style="justify-content: center; margin-bottom: 1rem;">
+          <button class="btn-yellow" onclick="app.pause()" id="pauseBtn">Pause</button>
+          <button class="btn-blue-lg" onclick="app.skip()">Skip</button>
+          <button class="btn-red" onclick="app.stop()">Stop</button>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-value stat-green" id="completedCount">0</div>
+          <div class="stat-label">Completed</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value stat-blue" id="efficiencyPercent">0%</div>
+          <div class="stat-label">Efficiency</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="graphModal" class="modal hidden" onclick="app.closeGraph(event)">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Analytics</h3>
+          <button class="modal-close" onclick="app.closeGraph()">✕</button>
+        </div>
+        <div class="chart-container">
+          <canvas id="chart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const app = {
+      timers: [],
+      running: false,
+      idx: 0,
+      paused: false,
+      intervalId: null,
+      chartInstance: null,
+      notificationSound: null,
+
+      init() {
+        const saved = localStorage.getItem('input');
+        if (saved) {
+          document.getElementById('input').value = saved;
+          this.parse();
+        }
+        document.getElementById('input').addEventListener('input', () => this.saveInput());
+        document.getElementById('editor').classList.remove('hidden');
+      },
+
+      parse() {
+        const input = document.getElementById('input').value;
+        const lines = input.split('\n').filter(l => l.trim());
+        this.timers = lines.map((line, i) => {
+          const match = line.match(/^(\d+(?:\.\d+)?)\s*(sec|min|m|s):\s*(.+)$/i);
+          if (!match) return null;
+          const [, num, unit, label] = match;
+          let sec = parseFloat(num);
+          if (unit.toLowerCase().startsWith('m')) sec *= 60;
+          return {
+            id: Date.now() + i,
+            label: label.trim(),
+            dur: Math.round(sec),
+            left: Math.round(sec),
+            done: false,
+            skip: false
+          };
+        }).filter(Boolean);
+        document.getElementById('taskCount').textContent = this.timers.length;
+        document.getElementById('startBtn').disabled = this.timers.length === 0;
+      },
+
+      saveInput() {
+        localStorage.setItem('input', document.getElementById('input').value);
+        this.parse();
+      },
+
+      insert(str) {
+        const textarea = document.getElementById('input');
+        const val = textarea.value;
+        textarea.value = val + (val ? '\n' : '') + str + ': ';
+        textarea.focus();
+        this.saveInput();
+      },
+
+      start() {
+        if (this.timers.length === 0) return;
+        this.running = true;
+        this.idx = 0;
+        this.timers.forEach(t => {
+          t.done = false;
+          t.skip = false;
+          t.left = t.dur;
+        });
+        document.getElementById('editor').classList.add('hidden');
+        document.getElementById('timer').classList.remove('hidden');
+        this.updateDisplay();
+        this.run();
+      },
+
+      run() {
+        if (this.idx >= this.timers.length) {
+          this.stop();
+          return;
+        }
+        const t = this.timers[this.idx];
+        document.getElementById('timerLabel').textContent = t.label;
+        document.getElementById('timerIdx').textContent = this.idx + 1;
+        document.getElementById('timerTotal').textContent = this.timers.length;
+
+        this.intervalId = setInterval(() => {
+          if (!this.paused && t.left > 0) {
+            t.left--;
+            this.updateDisplay();
+          }
+          if (t.left <= 0) {
+            clearInterval(this.intervalId);
+            t.done = true;
+            this.vibrate();
+            this.playSound();
+            this.idx++;
+            this.run();
+          }
+        }, 1000);
+      },
+
+      pause() {
+        this.paused = !this.paused;
+        document.getElementById('pauseBtn').textContent = this.paused ? 'Resume' : 'Pause';
+      },
+
+      skip() {
+        if (this.timers[this.idx]) {
+          clearInterval(this.intervalId);
+          this.timers[this.idx].skip = true;
+          this.idx++;
+          this.run();
+        }
+      },
+
+      stop() {
+        clearInterval(this.intervalId);
+        this.running = false;
+        this.paused = false;
+        if (this.timers.length > 0) this.save();
+        document.getElementById('timer').classList.add('hidden');
+        document.getElementById('editor').classList.remove('hidden');
+      },
+
+      updateDisplay() {
+        const t = this.timers[this.idx];
+        if (t) {
+          document.getElementById('timerTime').textContent = this.fmt(t.left);
+        }
+        const completed = this.timers.filter(t => t.done && !t.skip).length;
+        const efficiency = this.timers.length > 0 ? Math.round((completed / this.timers.length) * 100) : 0;
+        document.getElementById('completedCount').textContent = completed;
+        document.getElementById('efficiencyPercent').textContent = efficiency + '%';
+      },
+
+      save() {
+        const sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
+        const completed = this.timers.filter(t => t.done && !t.skip).length;
+        const efficiency = this.timers.length > 0 ? Math.round((completed / this.timers.length) * 100) : 0;
+        sessions.push({
+          date: new Date().toISOString(),
+          total: this.timers.length,
+          completed: completed,
+          efficiency: efficiency
+        });
+        if (sessions.length > 50) sessions.shift();
+        localStorage.setItem('sessions', JSON.stringify(sessions));
+      },
+
+      archive() {
+        const sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
+        if (sessions.length === 0) return alert('No sessions to archive');
+        const archives = JSON.parse(localStorage.getItem('archives') || '[]');
+        archives.push({ id: Date.now(), date: new Date().toISOString(), sessions });
+        if (archives.length > 100) archives.shift();
+        localStorage.setItem('archives', JSON.stringify(archives));
+        localStorage.removeItem('sessions');
+        alert('Archived ' + sessions.length + ' sessions!');
+      },
+
+      graph() {
+        document.getElementById('graphModal').classList.remove('hidden');
+        setTimeout(() => this.renderGraph(), 100);
+      },
+
+      closeGraph(e) {
+        if (!e || e.target === e.currentTarget) {
+          document.getElementById('graphModal').classList.add('hidden');
+        }
+      },
+
+      renderGraph() {
+        const canvas = document.getElementById('chart');
+        if (!canvas) return;
+        if (this.chartInstance) this.chartInstance.destroy();
+        const sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
+        const labels = sessions.map((_, i) => 'S' + (i + 1));
+        const data = sessions.map(s => s.efficiency);
+        this.chartInstance = new Chart(canvas.getContext('2d'), {
+          type: 'line',
+          data: {
+            labels: labels.length > 0 ? labels : ['No data'],
+            datasets: [{
+              label: 'Efficiency %',
+              data: data.length > 0 ? data : [0],
+              borderColor: 'rgb(16, 185, 129)',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              tension: 0.4,
+              fill: true
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: 'white' } } },
+            scales: {
+              y: { beginAtZero: true, max: 100, ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+              x: { ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+            }
+          }
+        });
+      },
+
+      fmt(s) {
+        const m = Math.floor(s / 60);
+        const sec = s % 60;
+        return m.toString().padStart(2, '0') + ':' + sec.toString().padStart(2, '0');
+      },
+
+      vibrate() {
+        if ('vibrate' in navigator) navigator.vibrate([200, 100, 200]);
+      },
+
+    };
+
+    app.init();
+  </script>
+</body>
+</html>

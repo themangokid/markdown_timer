@@ -169,14 +169,6 @@
           return Math.round((completed / timers.value.length) * 100);
         });
 
-        const completedSkippedCount = computed(() => {
-  return timers.value.filter(t => t.completed && t.skipped).length;
-});
-
-const notCompletedCount = computed(() => {
-  return timers.value.filter(t => t.skipped && !t.completed).length;
-});
-
         const tempoLabel = computed(() => {
           if (tempo.value === 0.8) return 'Fast (80%)';
           if (tempo.value === 1.2) return 'Slow (120%)';
@@ -298,16 +290,16 @@ const notCompletedCount = computed(() => {
           isPaused.value = !isPaused.value;
         };
 
-const skipTimer = (didComplete = false) => {
-  if (currentTimer.value) {
-    clearInterval(intervalId);
-    currentTimer.value.skipped = true;
-    currentTimer.value.completed = didComplete; // true if "Y", false if "N"
-    currentTimer.value.endTime = new Date().toLocaleTimeString();
-    currentIndex.value++;
-    runTimer();
-  }
-};
+        const skipTimer = () => {
+          if (currentTimer.value) {
+            clearInterval(intervalId);
+            currentTimer.value.skipped = true;
+            currentTimer.value.completed = true;
+            currentTimer.value.endTime = new Date().toLocaleTimeString();
+            currentIndex.value++;
+            runTimer();
+          }
+        };
 
         const previousTimer = () => {
           if (currentIndex.value > 0) {
@@ -1014,8 +1006,6 @@ const skipTimer = (didComplete = false) => {
           completedCount,
           skippedCount,
           efficiency,
-          completedSkippedCount,
-          notCompletedCount,
 
           // Methods
           formatTime,
@@ -1262,7 +1252,7 @@ const skipTimer = (didComplete = false) => {
                 </template>
               </div>
 
-<!-- Stats Bar -->
+              <!-- Stats Bar -->
               <div class="text-center text-gray-400 mb-8 text-sm flex items-center justify-center gap-4">
                 <div>
                   <span class="font-medium">Total:</span>
@@ -1283,69 +1273,6 @@ const skipTimer = (didComplete = false) => {
                 >
                   <i class="fas fa-backward mr-2"></i>Back
                 </button>
-
-                <button
-                  @click="pauseTimer"
-                  class="px-6 py-3 bg-yellow-500 hover:bg-yellow-600 rounded-lg font-bold transition text-lg"
-                >
-                  <i :class="isPaused ? 'fas fa-play' : 'fas fa-pause'" class="mr-2"></i>
-                  {{ isPaused ? 'Resume' : 'Pause' }}
-                </button>
-
-                <button
-                  v-if="currentIndex < timers.length - 1"
-                  @click="skipTimer(true)"
-                  class="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg font-medium transition flex items-center gap-2"
-                >
-                  <span class="font-bold">Y</span>
-                  <span>Skip</span>
-                </button>
-
-                <button
-                  v-if="currentIndex < timers.length - 1"
-                  @click="skipTimer(false)"
-                  class="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg font-medium transition flex items-center gap-2"
-                >
-                  <span class="font-bold">N</span>
-                  <span>Skip</span>
-                </button>
-              </div>
-
-              <!-- Secondary Controls -->
-              <div class="flex flex-wrap justify-center gap-2">
-                <button
-                  @click="toggleGraph"
-                  class="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm font-medium transition"
-                >
-                  <i class="fas fa-chart-line mr-1"></i>Graph (G)
-                </button>
-                <button
-                  @click="stopTimer"
-                  class="px-3 py-1.5 bg-red-500 hover:bg-red-600 rounded-lg text-sm font-medium transition"
-                >
-                  <i class="fas fa-stop mr-1"></i>Stop
-                </button>
-              </div>
-            </div>
-          </div>
-
-<button
-  v-if="currentIndex < timers.length - 1"
-  @click="skipTimer(true)"
-  class="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg font-medium transition flex items-center gap-2"
->
-  <span class="font-bold">Y</span>
-  <span>Skip</span>
-</button>
-
-<button
-  v-if="currentIndex < timers.length - 1"
-  @click="skipTimer(false)"
-  class="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg font-medium transition flex items-center gap-2"
->
-  <span class="font-bold">N</span>
-  <span>Skip</span>
-</button>
 
                 <button
                   @click="pauseTimer"
@@ -1418,24 +1345,40 @@ const skipTimer = (didComplete = false) => {
             </div>
           </div>
 
-        <div class="grid grid-cols-2 gap-4 mb-6">
-  <div class="bg-gray-900 p-4 rounded-xl text-center">
-    <div class="text-3xl font-bold text-green-400">{{ completedCount }}</div>
-    <div class="text-sm text-gray-400 mt-1">Fully Completed</div>
-  </div>
-  <div class="bg-gray-900 p-4 rounded-xl text-center">
-    <div class="text-3xl font-bold text-emerald-400">{{ completedSkippedCount }}</div>
-    <div class="text-sm text-gray-400 mt-1">Skip Y (Did it)</div>
-  </div>
-  <div class="bg-gray-900 p-4 rounded-xl text-center">
-    <div class="text-3xl font-bold text-red-400">{{ notCompletedCount }}</div>
-    <div class="text-sm text-gray-400 mt-1">Skip N (Didn't do)</div>
-  </div>
-  <div class="bg-gray-900 p-4 rounded-xl text-center">
-    <div class="text-3xl font-bold text-blue-400">{{ efficiency }}%</div>
-    <div class="text-sm text-gray-400 mt-1">Efficiency</div>
-  </div>
-</div>
+          <!-- Score Screen -->
+          <div
+            v-if="showScore"
+            class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            @click="showScore = false"
+          >
+            <div
+              class="bg-gray-800 rounded-2xl p-6 sm:p-8 max-w-lg w-full"
+              @click.stop
+            >
+              <h2 class="text-3xl font-bold mb-6 text-center">Session Complete!</h2>
+
+              <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-gray-900 p-4 rounded-xl text-center">
+                  <div class="text-3xl font-bold text-green-400">{{ completedCount }}</div>
+                  <div class="text-sm text-gray-400 mt-1">Completed</div>
+                </div>
+                <div class="bg-gray-900 p-4 rounded-xl text-center">
+                  <div class="text-3xl font-bold text-blue-400">{{ efficiency }}%</div>
+                  <div class="text-sm text-gray-400 mt-1">Efficiency</div>
+                </div>
+                <div class="bg-gray-900 p-4 rounded-xl text-center">
+                  <div class="text-3xl font-bold text-yellow-400">{{ skippedCount }}</div>
+                  <div class="text-sm text-gray-400 mt-1">Skipped</div>
+                </div>
+                <div class="bg-gray-900 p-4 rounded-xl text-center">
+                  <div class="text-3xl font-bold text-purple-400">{{ timers.length }}</div>
+                  <div class="text-sm text-gray-400 mt-1">Total Tasks</div>
+                </div>
+              </div>
+
+              <p class="text-center text-sm text-gray-400 mb-4">Click anywhere to continue</p>
+            </div>
+          </div>
 
           <!-- Settings Modal -->
           <div
