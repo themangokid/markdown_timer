@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MD-Timer Mini</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,sans-serif}
+    body{background:#111;color:#fff;min-height:100vh;padding:1rem}
+    .container{max-width:42rem;margin:0 auto}
+    h1{font-size:1.5rem;font-weight:700;margin-bottom:1.5rem;text-align:center;background:linear-gradient(to right,#60a5fa,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .card{background:#1f2937;border-radius:.5rem;padding:1rem;margin-bottom:1rem}
+    .btn-group{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem}
+    button{padding:.5rem 1rem;border:none;border-radius:.5rem;font-weight:600;cursor:pointer;transition:all .2s;font-size:.875rem;color:#fff}
+    button:disabled{background:#374151;cursor:not-allowed;opacity:.5}
+    .b1{background:#3b82f6}.b1:hover:not(:disabled){background:#2563eb}
+    .b2{background:#6366f1}.b2:hover:not(:disabled){background:#4f46e5}
+    .b3{background:#10b981;flex:1;padding:.75rem;font-size:1rem}.b3:hover:not(:disabled){background:#059669}
+    .b4{background:#f59e0b;padding:.75rem 1.5rem;font-size:1rem}.b4:hover{background:#d97706}
+    .b5{background:#ef4444;padding:.75rem 1.5rem;font-size:1rem}.b5:hover{background:#dc2626}
+    .b6{background:#8b5cf6;padding:.75rem 1rem}.b6:hover{background:#7c3aed}
+    .b7{background:#f97316;padding:.75rem 1rem}.b7:hover{background:#ea580c}
+    textarea{width:100%;height:12rem;padding:.75rem;background:#111;color:#fff;border:none;border-radius:.5rem;resize:none;font-family:monospace;font-size:.875rem}
+    textarea:focus{outline:2px solid #3b82f6}
+    .info{font-size:.875rem;color:#9ca3af;margin-top:.5rem}
+    .flex{display:flex}.gap{gap:.5rem}
+    .timer h2{font-size:1.25rem;font-weight:700;margin-bottom:1rem;text-align:center}
+    .time{font-size:3.75rem;font-weight:700;text-align:center;margin-bottom:1rem;font-variant-numeric:tabular-nums}
+    .center{text-align:center;color:#9ca3af;margin-bottom:1.5rem}
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;text-align:center}
+    .stat{background:#1f2937;padding:.75rem;border-radius:.5rem}
+    .val{font-size:1.5rem;font-weight:700}
+    .green{color:#34d399}.blue{color:#60a5fa}
+    .lbl{font-size:.75rem;color:#9ca3af;margin-top:.25rem}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.9);display:flex;align-items:center;justify-content:center;padding:1rem;z-index:50}
+    .modal-content{background:#1f2937;border-radius:.5rem;padding:1.5rem;max-width:42rem;width:100%;max-height:80vh;overflow-y:auto}
+    .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+    .modal-header h3{font-size:1.25rem;font-weight:700}
+    .close{background:none;border:none;color:#9ca3af;font-size:1.5rem;cursor:pointer;padding:0}
+    .close:hover{color:#fff}
+    .chart{height:16rem}
+    .hidden{display:none}
+    .sess{background:#111;border-radius:.5rem;padding:.75rem;margin-bottom:.5rem}
+    .sess-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;font-size:.875rem}
+    .sess-date{color:#9ca3af}
+    .sess-stats{color:#60a5fa;font-weight:600}
+    .sess-tasks{display:flex;gap:.25rem;flex-wrap:wrap}
+    .sess-task{padding:.25rem .5rem;border-radius:.25rem;font-size:.75rem;display:flex;align-items:center;gap:.25rem}
+    .sess-task.full{background:#10b981}
+    .sess-task.skipdone{background:#34d399}
+    .sess-task.partial{background:#f59e0b}
+    .sess-task.skip{background:#ef4444}
+    .sess-task .used{color:rgba(255,255,255,0.7);font-size:.7rem}
+    .encourage{color:#f59e0b;font-size:.7rem;margin-top:.25rem}
+    .tasks{display:flex;gap:.25rem;margin-top:1rem;flex-wrap:wrap}
+    .task{width:2rem;height:2rem;background:#374151;border-radius:.25rem;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:600}
+    .task.done{background:#10b981}.task.skipdone{background:#34d399}.task.skip{background:#ef4444}.task.current{background:#f59e0b;animation:pulse 1s infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+    #qrDisplay{text-align:center;padding:1rem}
+    #qrCanvas{background:#fff;padding:1rem;border-radius:.5rem;display:inline-block;min-height:320px;min-width:320px}
+    #qrCanvas img{width:300px;height:300px;display:block;margin:0 auto}
+    #scanVideo{width:100%;max-width:500px;border-radius:.5rem;background:#000}
+    #scanStatus{margin-top:1rem;color:#9ca3af;font-size:.875rem}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>MD-Timer Mini</h1>
+
+    <div id="editor">
+      <div class="card">
+        <div class="btn-group">
+          <button class="b1" onclick="a.ins('1 min')">+1m</button>
+          <button class="b1" onclick="a.ins('5 min')">+5m</button>
+          <button class="b2" onclick="a.ins('10 min')">+10m</button>
+          <button class="b2" onclick="a.ins('25 min')">+25m</button>
+        </div>
+        <textarea id="inp" placeholder="5 min: Deep work&#10;1 min: Break&#10;25 min: Pomodoro"></textarea>
+        <div class="info">Tasks: <span id="cnt">0</span></div>
+        <div class="tasks" id="taskList"></div>
+      </div>
+      <div class="flex gap">
+        <button class="b3" onclick="a.start()" id="start">Start</button>
+        <button class="b6" onclick="a.graph()">Graph</button>
+        <button class="b7" onclick="a.arch()">Archive</button>
+      </div>
+      <div class="flex gap" style="margin-top:.5rem">
+        <button class="b1" onclick="a.exportQR()" style="flex:1">📤 Export QR</button>
+        <button class="b2" onclick="a.importQR()" style="flex:1">📥 Scan QR</button>
+      </div>
+    </div>
+
+    <div id="timer" class="hidden">
+      <div class="card timer">
+        <h2 id="lbl"></h2>
+        <div class="time" id="tm">00:00</div>
+        <div class="center">Task <span id="idx">1</span> of <span id="tot">1</span></div>
+        <div class="flex gap" style="justify-content:center;margin-bottom:1rem">
+          <button class="b4" onclick="a.pause()" id="pBtn">Pause</button>
+          <button class="b3" onclick="a.skipDone()" style="padding:.75rem 1rem;font-size:.875rem">Done✓</button>
+          <button class="b1" onclick="a.skip()" style="padding:.75rem 1rem;font-size:.875rem">Skip</button>
+          <button class="b5" onclick="a.stop()">Stop</button>
+        </div>
+        <div class="tasks" id="runList"></div>
+      </div>
+      <div class="stats">
+        <div class="stat">
+          <div class="val green" id="comp">0</div>
+          <div class="lbl">Completed</div>
+        </div>
+        <div class="stat">
+          <div class="val blue" id="eff">0%</div>
+          <div class="lbl">Efficiency</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="gModal" class="modal hidden" onclick="a.cg(event)">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Analytics</h3>
+          <button class="close" onclick="a.cg()">✕</button>
+        </div>
+        <div class="chart"><canvas id="ch"></canvas></div>
+        <div class="chart" style="margin-top:1rem"><canvas id="ch2"></canvas></div>
+        <div id="sessions" style="margin-top:1rem"></div>
+      </div>
+    </div>
+
+    <div id="qrModal" class="modal hidden" onclick="a.closeQRModal(event)">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Export Tasks</h3>
+          <button class="close" onclick="a.closeQRModal()">✕</button>
+        </div>
+        <div id="qrDisplay">
+          <div id="qrCanvas"></div>
+          <p style="color:#9ca3af;margin-top:1rem">Scan this QR code on another device to import these tasks</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="scanModal" class="modal hidden" onclick="a.closeScanModal(event)">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Scan QR Code</h3>
+          <button class="close" onclick="a.closeScanModal()">✕</button>
+        </div>
+        <div style="text-align:center">
+          <video id="scanVideo" autoplay playsinline></video>
+          <div id="scanStatus">Position QR code in camera view...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <script>
+    const a={
+      ts:[],run:0,i:0,p:0,int:null,ch:null,ch2:null,stream:null,scanInt:null,
+      init(){
+        const s=localStorage.getItem('inp');
+        if(s){inp.value=s;this.parse()}
+        inp.oninput=()=>this.save();
+        editor.classList.remove('hidden')
+      },
+      parse(){
+        const ls=inp.value.split('\n').filter(l=>l.trim());
+        this.ts=ls.map((l,i)=>{
+          const m=l.match(/^(\d+(?:\.\d+)?)\s*(sec|min|m|s):\s*(.+)$/i);
+          if(!m)return null;
+          const[,n,u,lb]=m;
+          let s=parseFloat(n);
+          if(u.toLowerCase().startsWith('m'))s*=60;
+          return{id:Date.now()+i,label:lb.trim(),dur:Math.round(s),left:Math.round(s),done:0,skip:0,skipdone:0}
+        }).filter(Boolean);
+        cnt.textContent=this.ts.length;
+        start.disabled=!this.ts.length;
+        this.rTasks()
+      },
+      rTasks(){
+        const h=this.ts.map((t,i)=>`<div class="task">${i+1}</div>`).join('');
+        taskList.innerHTML=h
+      },
+      rRunTasks(){
+        const h=this.ts.map((t,i)=>{
+          const c=t.done?'done':t.skipdone?'skipdone':t.skip?'skip':i===this.i?'current':'';
+          return`<div class="task ${c}">${i+1}</div>`
+        }).join('');
+        runList.innerHTML=h
+      },
+      save(){
+        localStorage.setItem('inp',inp.value);
+        this.parse()
+      },
+      ins(s){
+        inp.value+=(inp.value?'\n':'')+s+': ';
+        inp.focus();
+        this.save()
+      },
+      start(){
+        if(!this.ts.length)return;
+        this.run=1;this.i=0;
+        this.ts.forEach(t=>{t.done=0;t.skip=0;t.skipdone=0;t.left=t.dur});
+        editor.classList.add('hidden');
+        timer.classList.remove('hidden');
+        this.upd();
+        this.exec()
+      },
+      exec(){
+        if(this.i>=this.ts.length){this.stop();return}
+        const t=this.ts[this.i];
+        t.startLeft=t.left;
+        lbl.textContent=t.label;
+        idx.textContent=this.i+1;
+        tot.textContent=this.ts.length;
+        this.rRunTasks();
+        this.int=setInterval(()=>{
+          if(!this.p&&t.left>0){t.left--;this.upd()}
+          if(t.left<=0){
+            clearInterval(this.int);
+            t.done=1;
+            this.vib();
+            this.i++;
+            this.exec()
+          }
+        },1000)
+      },
+      pause(){this.p=!this.p;pBtn.textContent=this.p?'Resume':'Pause'},
+      skipDone(){
+        if(this.ts[this.i]){
+          clearInterval(this.int);
+          const t=this.ts[this.i];
+          t.skipdone=1;
+          t.done=1;
+          t.timeUsed=t.startLeft-t.left;
+          this.vib();
+          this.i++;
+          this.exec()
+        }
+      },
+      skip(){
+        if(this.ts[this.i]){
+          clearInterval(this.int);
+          const t=this.ts[this.i];
+          t.skip=1;
+          t.timeUsed=t.startLeft-t.left;
+          this.i++;
+          this.exec()
+        }
+      },
+      stop(){
+        clearInterval(this.int);
+        this.run=0;this.p=0;
+        if(this.ts.length)this.saveS();
+        timer.classList.add('hidden');
+        editor.classList.remove('hidden')
+      },
+      upd(){
+        const t=this.ts[this.i];
+        if(t)tm.textContent=this.fmt(t.left);
+        const c=this.ts.filter(t=>t.done&&!t.skip).length;
+        const e=this.ts.length?Math.round((c/this.ts.length)*100):0;
+        comp.textContent=c;
+        eff.textContent=e+'%';
+        this.rRunTasks()
+      },
+      saveS(){
+        const ss=JSON.parse(localStorage.getItem('ss')||'[]');
+        const c=this.ts.filter(t=>t.done&&!t.skip).length;
+        const e=this.ts.length?Math.round((c/this.ts.length)*100):0;
+        ss.push({
+          date:new Date().toISOString(),
+          total:this.ts.length,
+          completed:c,
+          efficiency:e,
+          tasks:this.ts.map(t=>({
+            label:t.label,
+            dur:t.dur,
+            timeUsed:t.timeUsed||t.dur,
+            done:t.done,
+            skip:t.skip,
+            skipdone:t.skipdone
+          }))
+        });
+        if(ss.length>50)ss.shift();
+        localStorage.setItem('ss',JSON.stringify(ss))
+      },
+      arch(){
+        const ss=JSON.parse(localStorage.getItem('ss')||'[]');
+        if(!ss.length)return alert('No sessions');
+        const ar=JSON.parse(localStorage.getItem('ar')||'[]');
+        ar.push({id:Date.now(),date:new Date().toISOString(),sessions:ss});
+        if(ar.length>100)ar.shift();
+        localStorage.setItem('ar',JSON.stringify(ar));
+        localStorage.removeItem('ss');
+        alert('Archived '+ss.length+' sessions!')
+      },
+      graph(){
+        gModal.classList.remove('hidden');
+        setTimeout(()=>this.rGraph(),100)
+      },
+      cg(e){if(!e||e.target===e.currentTarget)gModal.classList.add('hidden')},
+      rGraph(){
+        const c=ch;
+        if(!c)return;
+        if(this.ch)this.ch.destroy();
+        if(this.ch2)this.ch2.destroy();
+        const ss=JSON.parse(localStorage.getItem('ss')||'[]');
+        const ls=ss.map((_,i)=>'S'+(i+1));
+        const d=ss.map(s=>s.efficiency);
+        
+        this.ch=new Chart(c.getContext('2d'),{
+          type:'line',
+          data:{
+            labels:ls.length?ls:['No data'],
+            datasets:[{
+              label:'Efficiency %',
+              data:d.length?d:[0],
+              borderColor:'rgb(16,185,129)',
+              backgroundColor:'rgba(16,185,129,0.1)',
+              tension:.4,
+              fill:!0
+            }]
+          },
+          options:{
+            responsive:!0,
+            maintainAspectRatio:!1,
+            plugins:{legend:{labels:{color:'#fff'}}},
+            scales:{
+              y:{beginAtZero:!0,max:100,ticks:{color:'#fff'},grid:{color:'rgba(255,255,255,0.1)'}},
+              x:{ticks:{color:'#fff'},grid:{color:'rgba(255,255,255,0.1)'}}
+            }
+          }
+        });
+
+        if(ss.length>0){
+          const datasets=[
+            {
+              label:'Completed (Full)',
+              data:ss.map(s=>(s.tasks||[]).filter(t=>t.done&&!t.skipdone&&t.timeUsed===t.dur).length),
+              backgroundColor:'rgb(16,185,129)',
+              stack:'stack1'
+            },
+            {
+              label:'Done✓',
+              data:ss.map(s=>(s.tasks||[]).filter(t=>t.skipdone).length),
+              backgroundColor:'rgb(52,211,153)',
+              stack:'stack1'
+            },
+            {
+              label:'Partial Time',
+              data:ss.map(s=>(s.tasks||[]).filter(t=>(t.done||t.skipdone)&&t.timeUsed<t.dur).length),
+              backgroundColor:'rgb(245,158,11)',
+              stack:'stack1'
+            },
+            {
+              label:'Skipped',
+              data:ss.map(s=>(s.tasks||[]).filter(t=>t.skip&&!t.done).length),
+              backgroundColor:'rgb(239,68,68)',
+              stack:'stack1'
+            }
+          ];
+
+          this.ch2=new Chart(ch2.getContext('2d'),{
+            type:'bar',
+            data:{labels:ls,datasets},
+            options:{
+              responsive:!0,
+              maintainAspectRatio:!1,
+              plugins:{
+                legend:{labels:{color:'#fff'}},
+                title:{display:!0,text:'Task Breakdown',color:'#fff',font:{size:14}}
+              },
+              scales:{
+                y:{stacked:!0,beginAtZero:!0,ticks:{color:'#fff'},grid:{color:'rgba(255,255,255,0.1)'}},
+                x:{stacked:!0,ticks:{color:'#fff'},grid:{color:'rgba(255,255,255,0.1)'}}
+              }
+            }
+          });
+        }
+
+        this.rSessions(ss)
+      },
+      rSessions(ss){
+        const h=ss.slice().reverse().map((s,i)=>{
+          const dt=new Date(s.date);
+          const time=dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+          const date=dt.toLocaleDateString([],{month:'short',day:'numeric'});
+          const tasks=s.tasks||[];
+          const hasPartial=tasks.some(t=>(t.done||t.skipdone)&&t.timeUsed<t.dur);
+          return`
+            <div class="sess">
+              <div class="sess-header">
+                <span class="sess-date">${date} ${time}</span>
+                <span class="sess-stats">${s.efficiency}% • ${s.completed}/${s.total}</span>
+              </div>
+              <div class="sess-tasks">
+                ${tasks.map(t=>{
+                  const pct=Math.round((t.timeUsed/t.dur)*100);
+                  const isPartial=(t.done||t.skipdone)&&t.timeUsed<t.dur;
+                  const cls=t.done&&!t.skipdone&&t.timeUsed===t.dur?'full':
+                            t.skipdone&&!isPartial?'skipdone':
+                            isPartial?'partial':
+                            'skip';
+                  const show=isPartial||t.skipdone?` <span class="used">${pct}%</span>`:'';
+                  return`<div class="sess-task ${cls}">${t.label}${show}</div>`
+                }).join('')}
+              </div>
+              ${hasPartial?'<div class="encourage">💡 Try using full time for better results!</div>':''}
+            </div>
+          `
+        }).join('');
+        sessions.innerHTML=h||'<p style="text-align:center;color:#9ca3af;padding:2rem">No sessions yet</p>'
+      },
+      fmt(s){
+        const m=Math.floor(s/60);
+        const sc=s%60;
+        return m.toString().padStart(2,'0')+':'+sc.toString().padStart(2,'0')
+      },
+      vib(){if('vibrate'in navigator)navigator.vibrate([200,100,200])},
+      exportQR(){
+        if(!inp.value.trim()){
+          alert('Please enter some tasks first!');
+          return
+        }
+        const data={
+          v:1,
+          t:'mdtimer',
+          c:inp.value,
+          ts:Date.now()
+        };
+        const json=JSON.stringify(data);
+        const encoded=encodeURIComponent(json);
+        const qrUrl=`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encoded}`;
+        
+        console.log('QR URL:', qrUrl);
+        console.log('Data length:', json.length);
+        
+        qrModal.classList.remove('hidden');
+        
+        const container=document.getElementById('qrCanvas');
+        container.innerHTML='Loading...';
+        
+        const img=document.createElement('img');
+        img.onload=()=>console.log('QR image loaded successfully');
+        img.onerror=()=>{
+          console.error('Failed to load QR image');
+          container.innerHTML='<p style="color:#ef4444">Failed to load QR code</p>'
+        };
+        img.src=qrUrl;
+        img.alt='QR Code';
+        
+        container.innerHTML='';
+        container.appendChild(img)
+      },
+      closeQRModal(e){
+        if(!e||e.target===e.currentTarget){
+          qrModal.classList.add('hidden')
+        }
+      },
+      async importQR(){
+        try{
+          this.stream=await navigator.mediaDevices.getUserMedia({
+            video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}
+          });
+          scanVideo.srcObject=this.stream;
+          scanModal.classList.remove('hidden');
+          scanStatus.textContent='Position QR code in camera view...';
+          scanStatus.style.color='#9ca3af';
+          this.startScanning()
+        }catch(err){
+          alert('Camera access required. Please allow camera access and try again.\n\nError: '+err.message)
+        }
+      },
+      startScanning(){
+        const canvas=document.createElement('canvas');
+        const ctx=canvas.getContext('2d');
+        this.scanInt=setInterval(()=>{
+          if(scanVideo.readyState===scanVideo.HAVE_ENOUGH_DATA){
+            canvas.width=scanVideo.videoWidth;
+            canvas.height=scanVideo.videoHeight;
+            ctx.drawImage(scanVideo,0,0,canvas.width,canvas.height);
+            const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
+            const code=jsQR(imgData.data,imgData.width,imgData.height);
+            if(code){
+              this.handleQRCode(code.data)
+            }
+          }
+        },200)
+      },
+      handleQRCode(raw){
+        try{
+          const data=JSON.parse(raw);
+          if(data.t==='mdtimer'&&data.c){
+            this.stopScanning();
+            inp.value=data.c;
+            this.save();
+            scanStatus.textContent='✓ Tasks imported successfully!';
+            scanStatus.style.color='#10b981';
+            setTimeout(()=>this.closeScanModal(),1500)
+          }else{
+            scanStatus.textContent='⚠ Invalid QR code format';
+            scanStatus.style.color='#f59e0b'
+          }
+        }catch(err){
+          scanStatus.textContent='⚠ Could not read QR code';
+          scanStatus.style.color='#ef4444'
+        }
+      },
+      stopScanning(){
+        if(this.scanInt){
+          clearInterval(this.scanInt);
+          this.scanInt=null
+        }
+        if(this.stream){
+          this.stream.getTracks().forEach(t=>t.stop());
+          this.stream=null;
+          scanVideo.srcObject=null
+        }
+      },
+      closeScanModal(e){
+        if(!e||e.target===e.currentTarget){
+          this.stopScanning();
+          scanModal.classList.add('hidden');
+          scanStatus.textContent='Position QR code in camera view...';
+          scanStatus.style.color='#9ca3af'
+        }
+      }
+    };
+    a.init()
+  </script>
+</body>
+</html>
