@@ -70,23 +70,23 @@
     <div id="editor">
       <div class="card">
         <div class="btn-group">
-          <button class="b1" onclick="a.ins('1 min')">+1m</button>
-          <button class="b1" onclick="a.ins('5 min')">+5m</button>
-          <button class="b2" onclick="a.ins('10 min')">+10m</button>
-          <button class="b2" onclick="a.ins('25 min')">+25m</button>
+          <button class="b1" onclick="app.ins('1 min')">+1m</button>
+          <button class="b1" onclick="app.ins('5 min')">+5m</button>
+          <button class="b2" onclick="app.ins('10 min')">+10m</button>
+          <button class="b2" onclick="app.ins('25 min')">+25m</button>
         </div>
         <textarea id="inp" placeholder="5 min: Deep work&#10;1 min: Break&#10;25 min: Pomodoro"></textarea>
         <div class="info">Tasks: <span id="cnt">0</span></div>
         <div class="tasks" id="taskList"></div>
       </div>
       <div class="flex gap">
-        <button class="b3" onclick="a.start()" id="start">Start</button>
-        <button class="b6" onclick="a.graph()">Graph</button>
-        <button class="b7" onclick="a.arch()">Archive</button>
+        <button class="b3" onclick="app.start()" id="start">Start</button>
+        <button class="b6" onclick="app.graph()">Graph</button>
+        <button class="b7" onclick="app.arch()">Archive</button>
       </div>
       <div class="flex gap" style="margin-top:.5rem">
-        <button class="b1" onclick="a.exportQR()" style="flex:1">📤 Export QR</button>
-        <button class="b2" onclick="a.importQR()" style="flex:1">📥 Scan QR</button>
+        <button class="b1" onclick="app.exportQR()" style="flex:1">📤 Export QR</button>
+        <button class="b2" onclick="app.importQR()" style="flex:1">📥 Scan QR</button>
       </div>
     </div>
 
@@ -96,10 +96,10 @@
         <div class="time" id="tm">00:00</div>
         <div class="center">Task <span id="idx">1</span> of <span id="tot">1</span></div>
         <div class="flex gap" style="justify-content:center;margin-bottom:1rem">
-          <button class="b4" onclick="a.pause()" id="pBtn">Pause</button>
-          <button class="b3" onclick="a.skipDone()" style="padding:.75rem 1rem;font-size:.875rem">Done✓</button>
-          <button class="b1" onclick="a.skip()" style="padding:.75rem 1rem;font-size:.875rem">Skip</button>
-          <button class="b5" onclick="a.stop()">Stop</button>
+          <button class="b4" onclick="app.pause()" id="pBtn">Pause</button>
+          <button class="b3" onclick="app.skipDone()" style="padding:.75rem 1rem;font-size:.875rem">Done✓</button>
+          <button class="b1" onclick="app.skip()" style="padding:.75rem 1rem;font-size:.875rem">Skip</button>
+          <button class="b5" onclick="app.stop()">Stop</button>
         </div>
         <div class="tasks" id="runList"></div>
       </div>
@@ -115,11 +115,11 @@
       </div>
     </div>
 
-    <div id="gModal" class="modal hidden" onclick="a.cg(event)">
+    <div id="gModal" class="modal hidden" onclick="app.closeModal(event,'gModal')">
       <div class="modal-content" onclick="event.stopPropagation()">
         <div class="modal-header">
           <h3>Analytics</h3>
-          <button class="close" onclick="a.cg()">✕</button>
+          <button class="close" onclick="app.closeModal(null,'gModal')">✕</button>
         </div>
         <div class="chart"><canvas id="ch"></canvas></div>
         <div class="chart" style="margin-top:1rem"><canvas id="ch2"></canvas></div>
@@ -127,11 +127,11 @@
       </div>
     </div>
 
-    <div id="qrModal" class="modal hidden" onclick="a.closeQRModal(event)">
+    <div id="qrModal" class="modal hidden" onclick="app.closeModal(event,'qrModal')">
       <div class="modal-content" onclick="event.stopPropagation()">
         <div class="modal-header">
           <h3>Export Tasks</h3>
-          <button class="close" onclick="a.closeQRModal()">✕</button>
+          <button class="close" onclick="app.closeModal(null,'qrModal')">✕</button>
         </div>
         <div id="qrDisplay">
           <div id="qrCanvas"></div>
@@ -140,11 +140,11 @@
       </div>
     </div>
 
-    <div id="scanModal" class="modal hidden" onclick="a.closeScanModal(event)">
+    <div id="scanModal" class="modal hidden" onclick="app.closeScan(event)">
       <div class="modal-content" onclick="event.stopPropagation()">
         <div class="modal-header">
           <h3>Scan QR Code</h3>
-          <button class="close" onclick="a.closeScanModal()">✕</button>
+          <button class="close" onclick="app.closeScan()">✕</button>
         </div>
         <div style="text-align:center">
           <video id="scanVideo" autoplay playsinline></video>
@@ -157,14 +157,17 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <script>
-    const a={
+    const $=(id)=>document.getElementById(id);
+    const app={
       ts:[],run:0,i:0,p:0,int:null,ch:null,ch2:null,stream:null,scanInt:null,
+      
       init(){
         const s=localStorage.getItem('inp');
         if(s){inp.value=s;this.parse()}
         inp.oninput=()=>this.save();
         editor.classList.remove('hidden')
       },
+      
       parse(){
         const ls=inp.value.split('\n').filter(l=>l.trim());
         this.ts=ls.map((l,i)=>{
@@ -175,59 +178,68 @@
           if(u.toLowerCase().startsWith('m'))s*=60;
           return{id:Date.now()+i,label:lb.trim(),dur:Math.round(s),left:Math.round(s),done:0,skip:0,skipdone:0}
         }).filter(Boolean);
-        cnt.textContent=this.ts.length;
-        start.disabled=!this.ts.length;
-        this.rTasks()
+        $('cnt').textContent=this.ts.length;
+        $('start').disabled=!this.ts.length;
+        this.renderTasks()
       },
-      rTasks(){
-        const h=this.ts.map((t,i)=>`<div class="task">${i+1}</div>`).join('');
-        taskList.innerHTML=h
+      
+      renderTasks(running){
+        const list=running?$('runList'):$('taskList');
+        list.innerHTML=this.ts.map((t,i)=>{
+          if(running){
+            const c=t.done?'done':t.skipdone?'skipdone':t.skip?'skip':i===this.i?'current':'';
+            return`<div class="task ${c}">${i+1}</div>`
+          }
+          return`<div class="task">${i+1}</div>`
+        }).join('')
       },
-      rRunTasks(){
-        const h=this.ts.map((t,i)=>{
-          const c=t.done?'done':t.skipdone?'skipdone':t.skip?'skip':i===this.i?'current':'';
-          return`<div class="task ${c}">${i+1}</div>`
-        }).join('');
-        runList.innerHTML=h
-      },
+      
       save(){
         localStorage.setItem('inp',inp.value);
         this.parse()
       },
+      
       ins(s){
         inp.value+=(inp.value?'\n':'')+s+': ';
         inp.focus();
         this.save()
       },
+      
       start(){
         if(!this.ts.length)return;
         this.run=1;this.i=0;
         this.ts.forEach(t=>{t.done=0;t.skip=0;t.skipdone=0;t.left=t.dur});
         editor.classList.add('hidden');
         timer.classList.remove('hidden');
-        this.upd();
-        this.exec()
+        this.updateUI();
+        this.execTask()
       },
-      exec(){
+      
+      execTask(){
         if(this.i>=this.ts.length){this.stop();return}
         const t=this.ts[this.i];
         t.startLeft=t.left;
-        lbl.textContent=t.label;
-        idx.textContent=this.i+1;
-        tot.textContent=this.ts.length;
-        this.rRunTasks();
+        $('lbl').textContent=t.label;
+        $('idx').textContent=this.i+1;
+        $('tot').textContent=this.ts.length;
+        this.renderTasks(1);
         this.int=setInterval(()=>{
-          if(!this.p&&t.left>0){t.left--;this.upd()}
+          if(!this.p&&t.left>0){t.left--;this.updateUI()}
           if(t.left<=0){
             clearInterval(this.int);
             t.done=1;
-            this.vib();
+            this.vibrate();
             this.i++;
-            this.exec()
+            this.execTask()
           }
         },1000)
       },
-      pause(){this.p=!this.p;pBtn.textContent=this.p?'Resume':'Pause'},
+      
+      pause(){
+        this.p=!this.p;
+        $('pBtn').textContent=this.p?'Resume':'Pause'
+      },
+      
       skipDone(){
         if(this.ts[this.i]){
           clearInterval(this.int);
@@ -235,11 +247,12 @@
           t.skipdone=1;
           t.done=1;
           t.timeUsed=t.startLeft-t.left;
-          this.vib();
+          this.vibrate();
           this.i++;
-          this.exec()
+          this.execTask()
         }
       },
+      
       skip(){
         if(this.ts[this.i]){
           clearInterval(this.int);
@@ -247,26 +260,29 @@
           t.skip=1;
           t.timeUsed=t.startLeft-t.left;
           this.i++;
-          this.exec()
+          this.execTask()
         }
       },
+      
       stop(){
         clearInterval(this.int);
         this.run=0;this.p=0;
-        if(this.ts.length)this.saveS();
+        if(this.ts.length)this.saveSess();
         timer.classList.add('hidden');
         editor.classList.remove('hidden')
       },
-      upd(){
+      
+      updateUI(){
         const t=this.ts[this.i];
-        if(t)tm.textContent=this.fmt(t.left);
+        if(t)$('tm').textContent=this.fmt(t.left);
         const c=this.ts.filter(t=>t.done&&!t.skip).length;
         const e=this.ts.length?Math.round((c/this.ts.length)*100):0;
-        comp.textContent=c;
-        eff.textContent=e+'%';
-        this.rRunTasks()
+        $('comp').textContent=c;
+        $('eff').textContent=e+'%';
+        this.renderTasks(1)
       },
-      saveS(){
+      
+      saveSess(){
         const ss=JSON.parse(localStorage.getItem('ss')||'[]');
         const c=this.ts.filter(t=>t.done&&!t.skip).length;
         const e=this.ts.length?Math.round((c/this.ts.length)*100):0;
@@ -287,6 +303,7 @@
         if(ss.length>50)ss.shift();
         localStorage.setItem('ss',JSON.stringify(ss))
       },
+      
       arch(){
         const ss=JSON.parse(localStorage.getItem('ss')||'[]');
         if(!ss.length)return alert('No sessions');
@@ -297,13 +314,18 @@
         localStorage.removeItem('ss');
         alert('Archived '+ss.length+' sessions!')
       },
+      
       graph(){
-        gModal.classList.remove('hidden');
-        setTimeout(()=>this.rGraph(),100)
+        $('gModal').classList.remove('hidden');
+        setTimeout(()=>this.renderGraph(),100)
       },
-      cg(e){if(!e||e.target===e.currentTarget)gModal.classList.add('hidden')},
-      rGraph(){
-        const c=ch;
+      
+      closeModal(e,id){
+        if(!e||e.target===e.currentTarget)$(id).classList.add('hidden')
+      },
+      
+      renderGraph(){
+        const c=$('ch');
         if(!c)return;
         if(this.ch)this.ch.destroy();
         if(this.ch2)this.ch2.destroy();
@@ -363,7 +385,7 @@
             }
           ];
 
-          this.ch2=new Chart(ch2.getContext('2d'),{
+          this.ch2=new Chart($('ch2').getContext('2d'),{
             type:'bar',
             data:{labels:ls,datasets},
             options:{
@@ -381,10 +403,11 @@
           });
         }
 
-        this.rSessions(ss)
+        this.renderSessions(ss)
       },
-      rSessions(ss){
-        const h=ss.slice().reverse().map((s,i)=>{
+      
+      renderSessions(ss){
+        const h=ss.slice().reverse().map(s=>{
           const dt=new Date(s.date);
           const time=dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
           const date=dt.toLocaleDateString([],{month:'short',day:'numeric'});
@@ -412,124 +435,106 @@
             </div>
           `
         }).join('');
-        sessions.innerHTML=h||'<p style="text-align:center;color:#9ca3af;padding:2rem">No sessions yet</p>'
+        $('sessions').innerHTML=h||'<p style="text-align:center;color:#9ca3af;padding:2rem">No sessions yet</p>'
       },
+      
       fmt(s){
         const m=Math.floor(s/60);
         const sc=s%60;
         return m.toString().padStart(2,'0')+':'+sc.toString().padStart(2,'0')
       },
-      vib(){if('vibrate'in navigator)navigator.vibrate([200,100,200])},
+      
+      vibrate(){
+        if('vibrate'in navigator)navigator.vibrate([200,100,200])
+      },
+      
       exportQR(){
-        if(!inp.value.trim()){
-          alert('Please enter some tasks first!');
-          return
-        }
-        const data={
-          v:1,
-          t:'mdtimer',
-          c:inp.value,
-          ts:Date.now()
-        };
-        const json=JSON.stringify(data);
-        const encoded=encodeURIComponent(json);
-        const qrUrl=`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encoded}`;
+        if(!inp.value.trim())return alert('Please enter some tasks first!');
+        const data=JSON.stringify({v:1,t:'mdtimer',c:inp.value,ts:Date.now()});
+        const url=`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(data)}`;
         
-        console.log('QR URL:', qrUrl);
-        console.log('Data length:', json.length);
-        
-        qrModal.classList.remove('hidden');
-        
-        const container=document.getElementById('qrCanvas');
-        container.innerHTML='Loading...';
-        
+        const canvas=$('qrCanvas');
         const img=document.createElement('img');
-        img.onload=()=>console.log('QR image loaded successfully');
-        img.onerror=()=>{
-          console.error('Failed to load QR image');
-          container.innerHTML='<p style="color:#ef4444">Failed to load QR code</p>'
-        };
-        img.src=qrUrl;
+        img.src=url;
         img.alt='QR Code';
+        img.onerror=()=>canvas.innerHTML='<p style="color:#ef4444">Failed to load QR</p>';
         
-        container.innerHTML='';
-        container.appendChild(img)
+        canvas.innerHTML='';
+        canvas.appendChild(img);
+        $('qrModal').classList.remove('hidden')
       },
-      closeQRModal(e){
-        if(!e||e.target===e.currentTarget){
-          qrModal.classList.add('hidden')
-        }
-      },
+      
       async importQR(){
         try{
           this.stream=await navigator.mediaDevices.getUserMedia({
             video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}
           });
-          scanVideo.srcObject=this.stream;
-          scanModal.classList.remove('hidden');
-          scanStatus.textContent='Position QR code in camera view...';
-          scanStatus.style.color='#9ca3af';
-          this.startScanning()
+          $('scanVideo').srcObject=this.stream;
+          $('scanModal').classList.remove('hidden');
+          $('scanStatus').textContent='Position QR code in camera view...';
+          $('scanStatus').style.color='#9ca3af';
+          this.startScan()
         }catch(err){
-          alert('Camera access required. Please allow camera access and try again.\n\nError: '+err.message)
+          alert('Camera access required. Please allow camera access.\n\nError: '+err.message)
         }
       },
-      startScanning(){
+      
+      startScan(){
         const canvas=document.createElement('canvas');
         const ctx=canvas.getContext('2d');
+        const video=$('scanVideo');
         this.scanInt=setInterval(()=>{
-          if(scanVideo.readyState===scanVideo.HAVE_ENOUGH_DATA){
-            canvas.width=scanVideo.videoWidth;
-            canvas.height=scanVideo.videoHeight;
-            ctx.drawImage(scanVideo,0,0,canvas.width,canvas.height);
+          if(video.readyState===video.HAVE_ENOUGH_DATA){
+            canvas.width=video.videoWidth;
+            canvas.height=video.videoHeight;
+            ctx.drawImage(video,0,0,canvas.width,canvas.height);
             const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
             const code=jsQR(imgData.data,imgData.width,imgData.height);
-            if(code){
-              this.handleQRCode(code.data)
-            }
+            if(code)this.processQR(code.data)
           }
         },200)
       },
-      handleQRCode(raw){
+      
+      processQR(raw){
         try{
           const data=JSON.parse(raw);
           if(data.t==='mdtimer'&&data.c){
-            this.stopScanning();
+            this.stopScan();
             inp.value=data.c;
             this.save();
-            scanStatus.textContent='✓ Tasks imported successfully!';
-            scanStatus.style.color='#10b981';
-            setTimeout(()=>this.closeScanModal(),1500)
+            const s=$('scanStatus');
+            s.textContent='✓ Tasks imported successfully!';
+            s.style.color='#10b981';
+            setTimeout(()=>this.closeScan(),1500)
           }else{
-            scanStatus.textContent='⚠ Invalid QR code format';
-            scanStatus.style.color='#f59e0b'
+            $('scanStatus').textContent='⚠ Invalid QR code format';
+            $('scanStatus').style.color='#f59e0b'
           }
         }catch(err){
-          scanStatus.textContent='⚠ Could not read QR code';
-          scanStatus.style.color='#ef4444'
+          $('scanStatus').textContent='⚠ Could not read QR code';
+          $('scanStatus').style.color='#ef4444'
         }
       },
-      stopScanning(){
-        if(this.scanInt){
-          clearInterval(this.scanInt);
-          this.scanInt=null
-        }
+      
+      stopScan(){
+        if(this.scanInt){clearInterval(this.scanInt);this.scanInt=null}
         if(this.stream){
           this.stream.getTracks().forEach(t=>t.stop());
           this.stream=null;
-          scanVideo.srcObject=null
+          $('scanVideo').srcObject=null
         }
       },
-      closeScanModal(e){
+      
+      closeScan(e){
         if(!e||e.target===e.currentTarget){
-          this.stopScanning();
-          scanModal.classList.add('hidden');
-          scanStatus.textContent='Position QR code in camera view...';
-          scanStatus.style.color='#9ca3af'
+          this.stopScan();
+          $('scanModal').classList.add('hidden');
+          $('scanStatus').textContent='Position QR code in camera view...';
+          $('scanStatus').style.color='#9ca3af'
         }
       }
     };
-    a.init()
+    app.init()
   </script>
 </body>
 </html>
