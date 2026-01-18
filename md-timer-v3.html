@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MD-Timer Mini v2</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,sans-serif}
+    body{background:#111;color:#fff;min-height:100vh;padding:1rem}
+    .container{max-width:42rem;margin:0 auto}
+    h1{font-size:1.5rem;font-weight:700;margin-bottom:1.5rem;text-align:center;background:linear-gradient(to right,#60a5fa,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .card{background:#1f2937;border-radius:.5rem;padding:1rem;margin-bottom:1rem}
+    .btn-group{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem}
+    button{padding:.5rem 1rem;border:none;border-radius:.5rem;font-weight:600;cursor:pointer;transition:all .2s;font-size:.875rem;color:#fff;opacity:.7}
+    button:hover{opacity:1}
+    button:disabled{background:#374151;cursor:not-allowed;opacity:.5}
+    .b1{background:#3b82f6}.b1:hover:not(:disabled){background:#2563eb}
+    .b2{background:#6366f1}.b2:hover:not(:disabled){background:#4f46e5}
+    .b3{background:#10b981;flex:1;padding:.75rem;font-size:1rem}.b3:hover:not(:disabled){background:#059669}
+    .b4{background:#f59e0b;padding:.75rem 1.5rem;font-size:1rem}.b4:hover{background:#d97706}
+    .b5{background:#ef4444;padding:.75rem 1.5rem;font-size:1rem}.b5:hover{background:#dc2626}
+    .b6{background:#8b5cf6;padding:.75rem 1rem}.b6:hover{background:#7c3aed}
+    .b7{background:#f97316;padding:.75rem 1rem}.b7:hover{background:#ea580c}
+    textarea{width:100%;height:12rem;padding:.75rem;background:#111;color:#fff;border:none;border-radius:.5rem;resize:none;font-family:monospace;font-size:.875rem}
+    textarea:focus{outline:2px solid #3b82f6}
+    .info{font-size:.875rem;color:#9ca3af;margin-top:.5rem}
+    .flex{display:flex}.gap{gap:.5rem}
+    .timer h2{font-size:1.25rem;font-weight:700;margin-bottom:1rem;text-align:center}
+    .time{font-size:3.75rem;font-weight:700;text-align:center;margin-bottom:1rem;font-variant-numeric:tabular-nums}
+    .center{text-align:center;color:#9ca3af;margin-bottom:1.5rem}
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;text-align:center}
+    .stat{background:#1f2937;padding:.75rem;border-radius:.5rem}
+    .val{font-size:1.5rem;font-weight:700}
+    .green{color:#34d399}.blue{color:#60a5fa}.purple{color:#a78bfa}
+    .lbl{font-size:.75rem;color:#9ca3af;margin-top:.25rem}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.9);display:flex;align-items:center;justify-content:center;padding:1rem;z-index:50}
+    .modal-content{background:#1f2937;border-radius:.5rem;padding:1.5rem;max-width:42rem;width:100%;max-height:80vh;overflow-y:auto}
+    .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+    .modal-header h3{font-size:1.25rem;font-weight:700}
+    .close{background:none;border:none;color:#9ca3af;font-size:1.5rem;cursor:pointer;padding:0}
+    .close:hover{color:#fff}
+    .chart{height:16rem}
+    .chart.small{height:12rem}
+    .stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem;margin:1rem 0}
+    .stat-card{background:#111;padding:.75rem;border-radius:.5rem;text-align:center}
+    .stat-value{font-size:1.5rem;font-weight:700;margin-bottom:.25rem}
+    .stat-label{font-size:.7rem;color:#9ca3af;text-transform:uppercase}
+    .feedback-box{background:#1a1a1a;padding:1rem;border-radius:.5rem;margin:1rem 0;border-left:3px solid #10b981}
+    .feedback-title{font-weight:600;margin-bottom:.5rem;color:#10b981}
+    .feedback-text{font-size:.875rem;color:#d1d5db;line-height:1.5}
+    .hidden{display:none}
+    .sess{background:#111;border-radius:.5rem;padding:.75rem;margin-bottom:.5rem}
+    .sess-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;font-size:.875rem}
+    .sess-date{color:#9ca3af}
+    .sess-stats{color:#60a5fa;font-weight:600}
+    .sess-tasks{display:flex;gap:.25rem;flex-wrap:wrap}
+    .sess-task{padding:.25rem .5rem;border-radius:.25rem;font-size:.75rem;display:flex;align-items:center;gap:.25rem}
+    .sess-task.full{background:#10b981}
+    .sess-task.skipdone{background:#34d399}
+    .sess-task.partial{background:#f59e0b}
+    .sess-task.skip{background:#ef4444}
+    .sess-task .used{color:rgba(255,255,255,0.7);font-size:.7rem}
+    .encourage{color:#f59e0b;font-size:.7rem;margin-top:.25rem}
+    .tasks{display:flex;gap:.25rem;margin-top:1rem;flex-wrap:wrap}
+    .task{width:2rem;height:2rem;background:#374151;border-radius:.25rem;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:600}
+    .task.done{background:#10b981}.task.skipdone{background:#34d399}.task.skip{background:#ef4444}.task.current{background:#f59e0b;animation:pulse 1s infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+    .routine-tag{display:inline-flex;align-items:center;gap:.25rem;padding:.25rem .5rem;background:#8b5cf6;border-radius:.25rem;font-size:.75rem;margin-bottom:.5rem}
+    .routine-separator{color:#a78bfa;font-size:.875rem;font-weight:600;margin:.5rem 0;padding:.25rem 0;border-top:1px solid #374151;display:flex;align-items:center;gap:.5rem}
+    .settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem}
+    .settings-grid button{width:100%}
+    .routine-item{background:#111;border-radius:.5rem;padding:.75rem;margin-bottom:.5rem;cursor:pointer;transition:background .2s}
+    .routine-item:hover{background:#1a1a1a}
+    .routine-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+    .routine-name{font-weight:600;font-size:.9rem;color:#a78bfa}
+    .routine-meta{font-size:.75rem;color:#9ca3af}
+    .routine-actions{display:flex;gap:.5rem}
+    .routine-preview{margin-top:.5rem;padding:.5rem;background:#0a0a0a;border-radius:.25rem;font-size:.75rem;color:#9ca3af;max-height:0;overflow:hidden;transition:max-height .3s ease}
+    .routine-preview.open{max-height:500px}
+    .routine-task-preview{padding:.25rem 0;display:flex;align-items:center;gap:.5rem}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>MD-Timer Mini v2</h1>
+
+    <div id="editor">
+      <div class="card">
+        <div class="btn-group">
+          <button class="b1" onclick="a.ins('1 min')">+1m</button>
+          <button class="b1" onclick="a.ins('5 min')">+5m</button>
+          <button class="b2" onclick="a.ins('10 min')">+10m</button>
+          <button class="b2" onclick="a.ins('25 min')">+25m</button>
+        </div>
+        <textarea id="inp" placeholder="# Morning&#10;5 min: Deep work&#10;1 min: Break&#10;&#10;# Afternoon&#10;25 min: Pomodoro"></textarea>
+        <div class="info">
+          Tasks: <span id="cnt">0</span> • 
+          Total: <span id="totalTime">00:00</span> • 
+          Target: <span id="targetTime">--:--</span>
+        </div>
+        <div class="tasks" id="taskList"></div>
+      </div>
+      <div class="flex gap">
+        <button class="b3" onclick="a.start()" id="start">Start</button>
+        <button class="b6" onclick="a.showSettings()">⚙️ Settings</button>
+      </div>
+    </div>
+
+    <div id="timer" class="hidden">
+      <div class="card timer">
+        <h2 id="lbl"></h2>
+        <div id="routineTag" class="routine-tag hidden">
+          <span>#</span>
+          <span id="routineName"></span>
+        </div>
+        <div class="time" id="tm">00:00</div>
+        <div class="center">Task <span id="idx">1</span> of <span id="tot">1</span></div>
+        <div class="flex gap" style="justify-content:center;margin-bottom:1rem">
+          <button class="b1" onclick="a.prev()" id="prevBtn" style="padding:.75rem 1rem;font-size:.875rem">◀ Back</button>
+          <button class="b4" onclick="a.pause()" id="pBtn">Pause</button>
+          <button class="b3" onclick="a.skipDone()" style="padding:.75rem 1rem;font-size:.875rem">Done✓</button>
+          <button class="b1" onclick="a.skip()" style="padding:.75rem 1rem;font-size:.875rem">Skip</button>
+          <button class="b5" onclick="a.stop()">Stop</button>
+        </div>
+        <div class="tasks" id="runList"></div>
+      </div>
+      <div class="stats">
+        <div class="stat">
+          <div class="val green" id="comp">0</div>
+          <div class="lbl">Completed</div>
+        </div>
+        <div class="stat">
+          <div class="val blue" id="eff">0%</div>
+          <div class="lbl">Efficiency</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="gModal" class="modal hidden" onclick="a.cg(event)">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>📊 Advanced Analytics</h3>
+          <button class="close" onclick="a.cg()">✕</button>
+        </div>
+        
+        <div id="analyticsStats"></div>
+        <div id="feedbackSection"></div>
+        
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+          <div>
+            <h4 style="font-size:.9rem;font-weight:600;margin-bottom:.5rem;color:#60a5fa">Efficiency Trend</h4>
+            <div class="chart small"><canvas id="ch"></canvas></div>
+          </div>
+          <div>
+            <h4 style="font-size:.9rem;font-weight:600;margin-bottom:.5rem;color:#34d399">Task Breakdown</h4>
+            <div class="chart small"><canvas id="ch2"></canvas></div>
+          </div>
+        </div>
+        
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+          <div>
+            <h4 style="font-size:.9rem;font-weight:600;margin-bottom:.5rem;color:#a78bfa">Time Analysis</h4>
+            <div class="chart small"><canvas id="ch3"></canvas></div>
+          </div>
+          <div>
+            <h4 style="font-size:.9rem;font-weight:600;margin-bottom:.5rem;color:#f59e0b">Consistency Score</h4>
+            <div class="chart small"><canvas id="ch4"></canvas></div>
+          </div>
+        </div>
+        
+        <div id="sessions" style="margin-top:1rem"></div>
+      </div>
+    </div>
+
+    <div id="settingsModal" class="modal hidden" onclick="a.closeSettings(event)">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>⚙️ Settings</h3>
+          <button class="close" onclick="a.closeSettings()">✕</button>
+        </div>
+        
+        <div style="margin-bottom:1.5rem">
+          <h4 style="margin-bottom:.5rem;font-weight:600">Tempo Control</h4>
+          <div class="settings-grid">
+            <button class="b6" onclick="a.setTempo(0.6)">⚡ 60%</button>
+            <button class="b6" onclick="a.setTempo(0.8)">⚡ 80%</button>
+            <button class="b6" onclick="a.setTempo(1.0)">✓ 100%</button>
+            <button class="b6" onclick="a.setTempo(1.2)">🐢 120%</button>
+            <button class="b6" onclick="a.setTempo(1.4)" style="grid-column:1/-1">🐢 140%</button>
+          </div>
+        </div>
+
+        <div style="margin-bottom:1.5rem">
+          <h4 style="margin-bottom:.5rem;font-weight:600">Save Current as Routine</h4>
+          <div class="flex gap" style="margin-bottom:.5rem">
+            <input id="routineNameInput" type="text" placeholder="Routine name..." style="flex:1;padding:.5rem;background:#111;color:#fff;border:none;border-radius:.5rem;font-size:.875rem">
+            <button class="b6" onclick="a.saveRoutine()">💾 Save</button>
+          </div>
+          <p style="font-size:.75rem;color:#9ca3af" id="taskCountText">Save your current tasks</p>
+        </div>
+
+        <div style="margin-bottom:1.5rem">
+          <h4 style="margin-bottom:.5rem;font-weight:600">Saved Routines</h4>
+          <div id="routinesList"></div>
+        </div>
+
+        <div>
+          <h4 style="margin-bottom:.5rem;font-weight:600">Analytics</h4>
+          <button class="b6" onclick="a.graph()" style="width:100%">📊 View Graph</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const a={
+      ts:[],run:0,i:0,p:0,int:null,ch:null,ch2:null,ch3:null,ch4:null,tempo:1.0,routines:[],expandedRoutine:null,
+      pauseStartTime:null,totalPauseTime:0,sessionStartTime:null,
+      init(){
+        const s=localStorage.getItem('inp');
+        const savedTempo=localStorage.getItem('tempo');
+        if(s){inp.value=s;this.parse()}
+        if(savedTempo){this.tempo=parseFloat(savedTempo);this.updateTempoDisplay()}
+        this.loadRoutines();
+        inp.oninput=()=>this.save();
+        editor.classList.remove('hidden')
+      },
+      parse(){
+        const ls=inp.value.split('\n').filter(l=>l.trim());
+        let currentRoutine=null;
+        
+        this.ts=ls.map((l,i)=>{
+          // Check for routine header (# Routine Name)
+          const rMatch=l.match(/^#\s+(.+)$/);
+          if(rMatch){
+            currentRoutine=rMatch[1].trim();
+            return null;
+          }
+          
+          const m=l.match(/^(\d+(?:\.\d+)?)\s*(sec|min|m|s):\s*(.+)$/i);
+          if(!m)return null;
+          const[,n,u,lb]=m;
+          let s=parseFloat(n);
+          if(u.toLowerCase().startsWith('m'))s*=60;
+          s=Math.round(s*this.tempo);
+          return{
+            id:Date.now()+i,
+            label:lb.trim(),
+            dur:Math.round(s),
+            left:Math.round(s),
+            done:0,
+            skip:0,
+            skipdone:0,
+            routine:currentRoutine
+          }
+        }).filter(Boolean);
+        
+        cnt.textContent=this.ts.length;
+        start.disabled=!this.ts.length;
+        this.updateTargetTime();
+        this.rTasks()
+      },
+      rTasks(){
+        let html='';
+        let lastRoutine=null;
+        
+        this.ts.forEach((t,i)=>{
+          if(t.routine&&t.routine!==lastRoutine){
+            html+=`<div class="routine-separator"># ${t.routine}</div>`;
+            lastRoutine=t.routine;
+          }
+          html+=`<div class="task">${i+1}</div>`;
+        });
+        
+        taskList.innerHTML=html;
+      },
+      rRunTasks(){
+        let html='';
+        let lastRoutine=null;
+        
+        this.ts.forEach((t,i)=>{
+          if(t.routine&&t.routine!==lastRoutine){
+            html+=`<div class="routine-separator" style="width:100%"># ${t.routine}</div>`;
+            lastRoutine=t.routine;
+          }
+          const c=t.done?'done':t.skipdone?'skipdone':t.skip?'skip':i===this.i?'current':'';
+          html+=`<div class="task ${c}">${i+1}</div>`;
+        });
+        
+        runList.innerHTML=html;
+      },
+      save(){
+        localStorage.setItem('inp',inp.value);
+        localStorage.setItem('tempo',this.tempo.toString());
+        this.parse()
+      },
+      setTempo(val){
+        this.tempo=val;
+        this.save();
+        this.updateTempoDisplay()
+      },
+      updateTempoDisplay(){
+        const buttons=[
+          {val:0.6,selector:0},
+          {val:0.8,selector:1},
+          {val:1.0,selector:2},
+          {val:1.2,selector:3},
+          {val:1.4,selector:4}
+        ];
+        
+        // Find all tempo buttons in settings modal
+        const modal=document.getElementById('settingsModal');
+        if(modal){
+          const tempoButtons=modal.querySelectorAll('.settings-grid button');
+          tempoButtons.forEach((btn,idx)=>{
+            if(buttons[idx]&&buttons[idx].val===this.tempo){
+              btn.style.background='#10b981';
+              btn.style.opacity='1'
+            }else{
+              btn.style.background='#8b5cf6';
+              btn.style.opacity='0.7'
+            }
+          })
+        }
+      },
+      ins(s){
+        inp.value+=(inp.value?'\n':'')+s+': ';
+        inp.focus();
+        this.save()
+      },
+      start(){
+        if(!this.ts.length)return;
+        this.run=1;this.i=0;
+        this.sessionStartTime=Date.now();
+        this.totalPauseTime=0;
+        this.ts.forEach(t=>{t.done=0;t.skip=0;t.skipdone=0;t.left=t.dur});
+        editor.classList.add('hidden');
+        timer.classList.remove('hidden');
+        this.upd();
+        this.exec()
+      },
+      exec(){
+        if(this.i>=this.ts.length){this.stop();return}
+        const t=this.ts[this.i];
+        t.startLeft=t.left;
+        lbl.textContent=t.label;
+        
+        // Show routine tag if task has routine
+        if(t.routine){
+          routineTag.classList.remove('hidden');
+          routineName.textContent=t.routine;
+        }else{
+          routineTag.classList.add('hidden');
+        }
+        
+        // Enable/disable previous button
+        prevBtn.disabled=this.i===0;
+        
+        idx.textContent=this.i+1;
+        tot.textContent=this.ts.length;
+        this.rRunTasks();
+        this.int=setInterval(()=>{
+          if(!this.p&&t.left>0){t.left--;this.upd()}
+          if(t.left<=0){
+            clearInterval(this.int);
+            t.done=1;
+            this.vib();
+            this.i++;
+            this.exec()
+          }
+        },1000)
+      },
+      pause(){
+        if(!this.p){
+          // Starting pause
+          this.pauseStartTime=Date.now();
+        }else{
+          // Ending pause
+          if(this.pauseStartTime){
+            this.totalPauseTime+=Date.now()-this.pauseStartTime;
+            this.pauseStartTime=null;
+          }
+        }
+        this.p=!this.p;
+        pBtn.textContent=this.p?'Resume':'Pause'
+      },
+      prev(){
+        if(this.i>0){
+          clearInterval(this.int);
+          this.i--;
+          const t=this.ts[this.i];
+          t.left=t.dur;
+          t.done=0;
+          t.skip=0;
+          t.skipdone=0;
+          this.exec()
+        }
+      },
+      skipDone(){
+        if(this.ts[this.i]){
+          clearInterval(this.int);
+          const t=this.ts[this.i];
+          t.skipdone=1;
+          t.done=1;
+          t.timeUsed=t.startLeft-t.left;
+          this.vib();
+          this.i++;
+          this.exec()
+        }
+      },
+      skip(){
+        if(this.ts[this.i]){
+          clearInterval(this.int);
+          const t=this.ts[this.i];
+          t.skip=1;
+          t.timeUsed=t.startLeft-t.left;
+          this.i++;
+          this.exec()
+        }
+      },
+      stop(){
+        clearInterval(this.int);
+        
+        // Save session data before showing graph
+        if(this.ts.length)this.saveS();
+        
+        this.run=0;this.p=0;
+        timer.classList.add('hidden');
+        editor.classList.remove('hidden');
+        
+        // Automatically show analytics after session ends
+        setTimeout(()=>{
+          this.graph();
+        }, 300);
+      },
+      upd(){
+        const t=this.ts[this.i];
+        if(t)tm.textContent=this.fmt(t.left);
+        const c=this.ts.filter(t=>t.done&&!t.skip).length;
+        const e=this.ts.length?Math.round((c/this.ts.length)*100):0;
+        comp.textContent=c;
+        eff.textContent=e+'%';
+        this.updateTargetTime();
+        this.rRunTasks()
+      },
+      saveS(){
+        const ss=JSON.parse(localStorage.getItem('ss')||'[]');
+        const c=this.ts.filter(t=>t.done&&!t.skip).length;
+        const completed=this.ts.filter(t=>t.done&&!t.skipdone).length;
+        const skipdone=this.ts.filter(t=>t.skipdone).length;
+        const skipped=this.ts.filter(t=>t.skip&&!t.done).length;
+        const e=this.ts.length?Math.round((c/this.ts.length)*100):0;
+        
+        const sessionEndTime=Date.now();
+        const actualDuration=sessionEndTime-this.sessionStartTime;
+        const plannedDuration=this.ts.reduce((sum,t)=>sum+t.dur,0)*1000;
+        
+        ss.push({
+          date:new Date().toISOString(),
+          total:this.ts.length,
+          completed:c,
+          completedFull:completed,
+          skipdone:skipdone,
+          skipped:skipped,
+          efficiency:e,
+          pauseTime:Math.round(this.totalPauseTime/1000),
+          actualDuration:Math.round(actualDuration/1000),
+          plannedDuration:Math.round(plannedDuration/1000),
+          tempo:this.tempo,
+          tasks:this.ts.map(t=>({
+            label:t.label,
+            dur:t.dur,
+            timeUsed:t.timeUsed||t.dur,
+            done:t.done,
+            skip:t.skip,
+            skipdone:t.skipdone,
+            routine:t.routine
+          }))
+        });
+        if(ss.length>50)ss.shift();
+        localStorage.setItem('ss',JSON.stringify(ss))
+      },
+      arch(){
+        const ss=JSON.parse(localStorage.getItem('ss')||'[]');
+        if(!ss.length)return alert('No sessions');
+        const ar=JSON.parse(localStorage.getItem('ar')||'[]');
+        ar.push({id:Date.now(),date:new Date().toISOString(),sessions:ss});
+        if(ar.length>100)ar.shift();
+        localStorage.setItem('ar',JSON.stringify(ar));
+        localStorage.removeItem('ss');
+        alert('Archived '+ss.length+' sessions!');
+        
+        // Close graph modal if open and refresh
+        gModal.classList.add('hidden');
+      },
+      graph(){
+        settingsModal.classList.add('hidden');
+        gModal.classList.remove('hidden');
+        setTimeout(()=>this.rGraph(),100)
+      },
+      cg(e){if(!e||e.target===e.currentTarget)gModal.classList.add('hidden')},
+      showSettings(){
+        this.updateTempoDisplay();
+        this.renderRoutinesList();
+        // Update task count text
+        const taskCountText=document.getElementById('taskCountText');
+        if(taskCountText){
+          taskCountText.textContent=`Save your current tasks (${this.ts.length} tasks)`;
+        }
+        settingsModal.classList.remove('hidden')
+      },
+      closeSettings(e){
+        if(!e||e.target===e.currentTarget){
+          settingsModal.classList.add('hidden')
+        }
+      },
+      saveRoutine(){
+        console.log('saveRoutine called');
+        const nameInput=document.getElementById('routineNameInput');
+        console.log('nameInput:', nameInput);
+        if(!nameInput){
+          alert('Error: Input field not found');
+          console.error('routineNameInput not found');
+          return
+        }
+        console.log('nameInput.value:', nameInput.value);
+        const name=nameInput.value?nameInput.value.trim():'';
+        console.log('name after trim:', name);
+        if(!name){
+          alert('Please enter a routine name');
+          return
+        }
+        if(this.ts.length===0){
+          alert('No tasks to save');
+          return
+        }
+        const routine={
+          id:Date.now(),
+          name:name,
+          tasks:inp.value,
+          count:this.ts.length,
+          created:new Date().toISOString()
+        };
+        console.log('Saving routine:', routine);
+        this.routines.push(routine);
+        localStorage.setItem('routines',JSON.stringify(this.routines));
+        nameInput.value='';
+        this.renderRoutinesList();
+        alert('Routine saved!')
+      },
+      loadRoutines(){
+        const saved=localStorage.getItem('routines');
+        if(saved){
+          this.routines=JSON.parse(saved)
+        }
+      },
+      loadRoutine(id){
+        const routine=this.routines.find(r=>r.id===id);
+        if(!routine){
+          alert('Routine not found');
+          return
+        }
+        inp.value=routine.tasks;
+        this.save();
+        settingsModal.classList.add('hidden');
+        alert('Routine "'+routine.name+'" loaded!')
+      },
+      deleteRoutine(id){
+        if(!confirm('Delete this routine?'))return;
+        this.routines=this.routines.filter(r=>r.id!==id);
+        localStorage.setItem('routines',JSON.stringify(this.routines));
+        this.renderRoutinesList()
+      },
+      toggleRoutinePreview(id,event){
+        // Don't toggle if clicking on action buttons
+        if(event.target.tagName==='BUTTON'||event.target.closest('button')){
+          return
+        }
+        this.expandedRoutine=this.expandedRoutine===id?null:id;
+        this.renderRoutinesList()
+      },
+      renderRoutinesList(){
+        const container=document.getElementById('routinesList');
+        if(this.routines.length===0){
+          container.innerHTML='<p style="text-align:center;color:#9ca3af;padding:1rem;font-size:.875rem">No saved routines yet</p>';
+          return
+        }
+        const html=this.routines.slice().reverse().map(r=>{
+          const date=new Date(r.created);
+          const dateStr=date.toLocaleDateString([],{month:'short',day:'numeric'});
+          const isExpanded=this.expandedRoutine===r.id;
+          
+          // Parse tasks for preview
+          const lines=r.tasks.split('\n').filter(l=>l.trim());
+          let previewHtml='';
+          let currentRoutineName=null;
+          
+          lines.forEach(line=>{
+            const routineMatch=line.match(/^#\s+(.+)$/);
+            if(routineMatch){
+              currentRoutineName=routineMatch[1].trim();
+              previewHtml+=`<div class="routine-task-preview" style="color:#a78bfa;font-weight:600;margin-top:.5rem">📋 ${currentRoutineName}</div>`;
+            }else{
+              const taskMatch=line.match(/^(\d+(?:\.\d+)?)\s*(sec|min|m|s):\s*(.+)$/i);
+              if(taskMatch){
+                const[,num,unit,label]=taskMatch;
+                previewHtml+=`<div class="routine-task-preview">⏱️ ${num}${unit}: ${label}</div>`;
+              }
+            }
+          });
+          
+          return`
+            <div class="routine-item" onclick="a.toggleRoutinePreview(${r.id}, event)">
+              <div class="routine-header">
+                <div>
+                  <div class="routine-name">📋 ${r.name}</div>
+                  <div class="routine-meta">${r.count} tasks • ${dateStr}</div>
+                </div>
+                <div class="routine-actions">
+                  <button class="b3" onclick="a.loadRoutine(${r.id})" style="padding:.4rem .75rem;font-size:.75rem">Load</button>
+                  <button class="b5" onclick="a.deleteRoutine(${r.id})" style="padding:.4rem .75rem;font-size:.75rem">Delete</button>
+                </div>
+              </div>
+              <div class="routine-preview ${isExpanded?'open':''}">
+                ${previewHtml}
+              </div>
+            </div>
+          `
+        }).join('');
+        container.innerHTML=html
+      },
+      rGraph(){
+        const c=ch;
+        if(!c)return;
+        if(this.ch)this.ch.destroy();
+        if(this.ch2)this.ch2.destroy();
+        if(this.ch3)this.ch3.destroy();
+        if(this.ch4)this.ch4.destroy();
+        
+        const ss=JSON.parse(localStorage.getItem('ss')||'[]');
+        
+        // Calculate advanced stats
+        this.renderAdvancedStats(ss);
+        this.renderFeedback(ss);
+        
+        const ls=ss.map((_,i)=>'S'+(i+1));
+        const d=ss.map(s=>s.efficiency);
+        
+        // Chart 1: Efficiency trend
+        this.ch=new Chart(c.getContext('2d'),{
+          type:'line',
+          data:{
+            labels:ls.length?ls:['Session 1'],
+            datasets:[{
+              label:'Efficiency %',
+              data:d.length?d:[0],
+              borderColor:'rgb(16,185,129)',
+              backgroundColor:'rgba(16,185,129,0.1)',
+              tension:.4,
+              fill:!0,
+              borderWidth:2
+            }]
+          },
+          options:{
+            responsive:!0,
+            maintainAspectRatio:!1,
+            plugins:{legend:{labels:{color:'#fff',font:{size:10}}}},
+            scales:{
+              y:{beginAtZero:!0,max:100,ticks:{color:'#fff',font:{size:9}},grid:{color:'rgba(255,255,255,0.1)'}},
+              x:{ticks:{color:'#fff',font:{size:9}},grid:{color:'rgba(255,255,255,0.1)'}}
+            }
+          }
+        });
+
+        // Chart 2: Task breakdown (stacked bar)
+        if(ss.length>0){
+          const datasets=[
+            {
+              label:'Completed Full',
+              data:ss.map(s=>s.completedFull||0),
+              backgroundColor:'rgb(16,185,129)',
+              stack:'stack1'
+            },
+            {
+              label:'Skip Done',
+              data:ss.map(s=>s.skipdone||0),
+              backgroundColor:'rgb(52,211,153)',
+              stack:'stack1'
+            },
+            {
+              label:'Skipped',
+              data:ss.map(s=>s.skipped||0),
+              backgroundColor:'rgb(239,68,68)',
+              stack:'stack1'
+            }
+          ];
+
+          this.ch2=new Chart(ch2.getContext('2d'),{
+            type:'bar',
+            data:{labels:ls,datasets},
+            options:{
+              responsive:!0,
+              maintainAspectRatio:!1,
+              plugins:{legend:{labels:{color:'#fff',font:{size:10}}}},
+              scales:{
+                y:{stacked:!0,beginAtZero:!0,ticks:{color:'#fff',font:{size:9}},grid:{color:'rgba(255,255,255,0.1)'}},
+                x:{stacked:!0,ticks:{color:'#fff',font:{size:9}},grid:{color:'rgba(255,255,255,0.1)'}}
+              }
+            }
+          });
+        }
+        
+        // Chart 3: Time Analysis (Planned vs Actual vs Pause)
+        if(ss.length>0){
+          this.ch3=new Chart(ch3.getContext('2d'),{
+            type:'bar',
+            data:{
+              labels:ls,
+              datasets:[
+                {
+                  label:'Planned (min)',
+                  data:ss.map(s=>(s.plannedDuration||0)/60),
+                  backgroundColor:'rgba(96,165,250,0.6)'
+                },
+                {
+                  label:'Actual (min)',
+                  data:ss.map(s=>(s.actualDuration||0)/60),
+                  backgroundColor:'rgba(167,139,250,0.6)'
+                },
+                {
+                  label:'Paused (min)',
+                  data:ss.map(s=>(s.pauseTime||0)/60),
+                  backgroundColor:'rgba(245,158,11,0.6)'
+                }
+              ]
+            },
+            options:{
+              responsive:!0,
+              maintainAspectRatio:!1,
+              plugins:{legend:{labels:{color:'#fff',font:{size:10}}}},
+              scales:{
+                y:{beginAtZero:!0,ticks:{color:'#fff',font:{size:9}},grid:{color:'rgba(255,255,255,0.1)'}},
+                x:{ticks:{color:'#fff',font:{size:9}},grid:{color:'rgba(255,255,255,0.1)'}}
+              }
+            }
+          });
+        }
+        
+        // Chart 4: Consistency Score (variance from average)
+        if(ss.length>1){
+          const avgEff=ss.reduce((sum,s)=>sum+s.efficiency,0)/ss.length;
+          const consistencyScores=ss.map(s=>100-Math.abs(s.efficiency-avgEff));
+          
+          this.ch4=new Chart(ch4.getContext('2d'),{
+            type:'line',
+            data:{
+              labels:ls,
+              datasets:[{
+                label:'Consistency %',
+                data:consistencyScores,
+                borderColor:'rgb(245,158,11)',
+                backgroundColor:'rgba(245,158,11,0.1)',
+                tension:.4,
+                fill:!0
+              }]
+            },
+            options:{
+              responsive:!0,
+              maintainAspectRatio:!1,
+              plugins:{legend:{labels:{color:'#fff',font:{size:10}}}},
+              scales:{
+                y:{beginAtZero:!0,max:100,ticks:{color:'#fff',font:{size:9}},grid:{color:'rgba(255,255,255,0.1)'}},
+                x:{ticks:{color:'#fff',font:{size:9}},grid:{color:'rgba(255,255,255,0.1)'}}
+              }
+            }
+          });
+        }
+
+        this.rSessions(ss)
+      },
+      renderAdvancedStats(ss){
+        if(ss.length===0){
+          document.getElementById('analyticsStats').innerHTML='<p style="text-align:center;color:#9ca3af;padding:2rem">Complete a session to see your stats!</p>';
+          return;
+        }
+        
+        const total=ss.length;
+        const avgEff=Math.round(ss.reduce((sum,s)=>sum+s.efficiency,0)/total);
+        const avgPause=Math.round(ss.reduce((sum,s)=>sum+(s.pauseTime||0),0)/total);
+        const totalTasks=ss.reduce((sum,s)=>sum+s.total,0);
+        const totalCompleted=ss.reduce((sum,s)=>sum+s.completed,0);
+        const completionRate=Math.round((totalCompleted/totalTasks)*100);
+        
+        // Calculate streak
+        let currentStreak=0;
+        for(let i=ss.length-1;i>=0;i--){
+          if(ss[i].efficiency>=70){
+            currentStreak++;
+          }else{
+            break;
+          }
+        }
+        
+        // Calculate improvement trend
+        const recent5=ss.slice(-5);
+        const older5=ss.slice(-10,-5);
+        let trend='Stable';
+        if(recent5.length>=3&&older5.length>=3){
+          const recentAvg=recent5.reduce((sum,s)=>sum+s.efficiency,0)/recent5.length;
+          const olderAvg=older5.reduce((sum,s)=>sum+s.efficiency,0)/older5.length;
+          const diff=recentAvg-olderAvg;
+          if(diff>5)trend='Improving ↗';
+          else if(diff<-5)trend='Declining ↘';
+        }
+        
+        const html=`
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value" style="color:#10b981">${avgEff}%</div>
+              <div class="stat-label">Avg Efficiency</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" style="color:#60a5fa">${completionRate}%</div>
+              <div class="stat-label">Completion Rate</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" style="color:#f59e0b">${this.fmt(avgPause)}</div>
+              <div class="stat-label">Avg Pause Time</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" style="color:#a78bfa">${currentStreak}</div>
+              <div class="stat-label">Current Streak</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" style="color:#34d399">${total}</div>
+              <div class="stat-label">Total Sessions</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" style="color:#10b981">${trend}</div>
+              <div class="stat-label">Trend</div>
+            </div>
+          </div>
+        `;
+        
+        document.getElementById('analyticsStats').innerHTML=html;
+      },
+      renderFeedback(ss){
+        if(ss.length===0){
+          document.getElementById('feedbackSection').innerHTML='<div class="feedback-box"><div class="feedback-title">👋 Welcome!</div><div class="feedback-text">Complete your first session to get personalized feedback and insights.</div></div>';
+          return;
+        }
+        
+        const recent=ss[ss.length-1];
+        const avgEff=ss.reduce((sum,s)=>sum+s.efficiency,0)/ss.length;
+        const avgPause=ss.reduce((sum,s)=>sum+(s.pauseTime||0),0)/ss.length;
+        
+        let feedback=[];
+        
+        // Efficiency feedback
+        if(recent.efficiency>=90){
+          feedback.push({title:'🎉 Excellent Performance!',text:'You maintained outstanding focus with '+recent.efficiency+'% efficiency. Keep up the amazing work!'});
+        }else if(recent.efficiency>=70){
+          feedback.push({title:'👍 Good Session',text:'Solid performance at '+recent.efficiency+'% efficiency. You\'re building great habits!'});
+        }else if(recent.efficiency<50){
+          feedback.push({title:'💪 Room for Growth',text:'This session was challenging. Consider breaking tasks into smaller chunks or reducing distractions.'});
+        }
+        
+        // Pause time feedback
+        if(recent.pauseTime>avgPause*2&&avgPause>0){
+          feedback.push({title:'⏸️ High Pause Time',text:'You paused for '+this.fmt(recent.pauseTime)+' this session. Try to minimize interruptions for better flow.'});
+        }else if(recent.pauseTime===0&&recent.actualDuration>300){
+          feedback.push({title:'🔥 Uninterrupted Focus',text:'Amazing! You completed this session without any pauses. That\'s deep work at its best!'});
+        }
+        
+        // Time accuracy feedback
+        if(recent.actualDuration&&recent.plannedDuration){
+          const ratio=recent.actualDuration/recent.plannedDuration;
+          if(ratio>1.3){
+            feedback.push({title:'⏱️ Time Overrun',text:'Session took '+Math.round((ratio-1)*100)+'% longer than planned. Consider adjusting your estimates or tempo.'});
+          }else if(ratio>=0.9&&ratio<=1.1){
+            feedback.push({title:'🎯 Perfect Timing',text:'Your actual time matched your plan! Excellent time estimation skills.'});
+          }
+        }
+        
+        // Consistency feedback
+        if(ss.length>=5){
+          const stdDev=Math.sqrt(ss.slice(-5).reduce((sum,s)=>sum+Math.pow(s.efficiency-avgEff,2),0)/5);
+          if(stdDev<10){
+            feedback.push({title:'📈 Consistent Performance',text:'Your efficiency has been very stable. This consistency will compound into major productivity gains!'});
+          }
+        }
+        
+        if(feedback.length===0){
+          feedback.push({title:'📊 Keep Going',text:'More sessions will unlock detailed insights and personalized feedback.'});
+        }
+        
+        const html=feedback.map(f=>`
+          <div class="feedback-box">
+            <div class="feedback-title">${f.title}</div>
+            <div class="feedback-text">${f.text}</div>
+          </div>
+        `).join('');
+        
+        document.getElementById('feedbackSection').innerHTML=html;
+      },
+      rSessions(ss){
+        const h=ss.slice().reverse().map((s,i)=>{
+          const dt=new Date(s.date);
+          const time=dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+          const date=dt.toLocaleDateString([],{month:'short',day:'numeric'});
+          const tasks=s.tasks||[];
+          const hasPartial=tasks.some(t=>(t.done||t.skipdone)&&t.timeUsed<t.dur);
+          return`
+            <div class="sess">
+              <div class="sess-header">
+                <span class="sess-date">${date} ${time}</span>
+                <span class="sess-stats">${s.efficiency}% • ${s.completed}/${s.total}</span>
+              </div>
+              <div class="sess-tasks">
+                ${tasks.map(t=>{
+                  const pct=Math.round((t.timeUsed/t.dur)*100);
+                  const isPartial=(t.done||t.skipdone)&&t.timeUsed<t.dur;
+                  const cls=t.done&&!t.skipdone&&t.timeUsed===t.dur?'full':
+                            t.skipdone&&!isPartial?'skipdone':
+                            isPartial?'partial':
+                            'skip';
+                  const show=isPartial||t.skipdone?` <span class="used">${pct}%</span>`:'';
+                  const rTag=t.routine?`<span style="color:#a78bfa">#${t.routine}</span> `:'';
+                  return`<div class="sess-task ${cls}">${rTag}${t.label}${show}</div>`
+                }).join('')}
+              </div>
+              ${hasPartial?'<div class="encourage">💡 Try using full time for better results!</div>':''}
+            </div>
+          `
+        }).join('');
+        sessions.innerHTML=h||'<p style="text-align:center;color:#9ca3af;padding:2rem">No sessions yet</p>'
+      },
+      fmt(s){
+        const m=Math.floor(s/60);
+        const sc=s%60;
+        return m.toString().padStart(2,'0')+':'+sc.toString().padStart(2,'0')
+      },
+      updateTargetTime(){
+        // Calculate total time
+        const total=this.ts.reduce((sum,t)=>sum+t.dur,0);
+        totalTime.textContent=this.fmt(total);
+        
+        if(!this.run){
+          // When idle, show clock time when all tasks would finish
+          const now=new Date();
+          const targetDate=new Date(now.getTime()+total*1000);
+          targetTime.textContent=targetDate.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+        }else{
+          // When running, calculate remaining time from current task onwards
+          let remaining=0;
+          for(let j=this.i;j<this.ts.length;j++){
+            remaining+=this.ts[j].left;
+          }
+          const now=new Date();
+          const targetDate=new Date(now.getTime()+remaining*1000);
+          targetTime.textContent=targetDate.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+        }
+      },
+      vib(){if('vibrate'in navigator)navigator.vibrate([200,100,200])}
+    };
+    a.init()
+  </script>
+</body>
+</html>
