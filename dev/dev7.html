@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MD-Timer Mini</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,sans-serif}
+    body{background:#111;color:#fff;min-height:100vh;padding:1rem}
+    .container{max-width:42rem;margin:0 auto}
+    h1{font-size:1.5rem;font-weight:700;margin-bottom:1.5rem;text-align:center;background:linear-gradient(to right,#60a5fa,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .card{background:#1f2937;border-radius:.5rem;padding:1rem;margin-bottom:1rem}
+    .btn-group{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem}
+    button{padding:.5rem 1rem;border:none;border-radius:.5rem;font-weight:600;cursor:pointer;transition:all .2s;font-size:.875rem;color:#fff}
+    button:disabled{background:#374151;cursor:not-allowed;opacity:.5}
+    .b1{background:#3b82f6}.b1:hover:not(:disabled){background:#2563eb}
+    .b2{background:#6366f1}.b2:hover:not(:disabled){background:#4f46e5}
+    .b3{background:#10b981;flex:1;padding:.75rem;font-size:1rem}.b3:hover:not(:disabled){background:#059669}
+    .b4{background:#f59e0b;padding:.75rem 1.5rem;font-size:1rem}.b4:hover{background:#d97706}
+    .b5{background:#ef4444;padding:.75rem 1.5rem;font-size:1rem}.b5:hover{background:#dc2626}
+    .b6{background:#8b5cf6;padding:.75rem 1rem}.b6:hover{background:#7c3aed}
+    .b7{background:#f97316;padding:.75rem 1rem}.b7:hover{background:#ea580c}
+    textarea{width:100%;height:16rem;padding:.75rem;background:#111;color:#fff;border:none;border-radius:.5rem;resize:vertical;font-family:monospace;font-size:.875rem;min-height:10rem;max-height:40rem}
+    textarea:focus{outline:2px solid #3b82f6}
+    @media(min-width:768px){textarea{height:24rem;font-size:1rem}}
+    @media(max-width:640px){textarea{height:14rem}}
+    .info{font-size:.875rem;color:#9ca3af;margin-top:.5rem}
+    .flex{display:flex}.gap{gap:.5rem}
+    .timer h2{font-size:1.25rem;font-weight:700;margin-bottom:1rem;text-align:center}
+    .time{font-size:3.75rem;font-weight:700;text-align:center;margin-bottom:1rem;font-variant-numeric:tabular-nums}
+    .center{text-align:center;color:#9ca3af;margin-bottom:1.5rem}
+    .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;text-align:center}
+    .stat{background:#1f2937;padding:.75rem;border-radius:.5rem}
+    .val{font-size:1.5rem;font-weight:700}
+    .green{color:#34d399}.blue{color:#60a5fa}
+    .lbl{font-size:.75rem;color:#9ca3af;margin-top:.25rem}
+    .routine-badge{display:inline-flex;align-items:center;gap:.25rem;padding:.125rem .375rem;background:#8b5cf6;border-radius:.25rem;font-size:.7rem;margin-left:.5rem}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.9);display:flex;align-items:center;justify-content:center;padding:1rem;z-index:50}
+    .modal-content{background:#1f2937;border-radius:.5rem;padding:1.5rem;max-width:42rem;width:100%;max-height:80vh;overflow-y:auto}
+    .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+    .modal-header h3{font-size:1.25rem;font-weight:700}
+    .close{background:none;border:none;color:#9ca3af;font-size:1.5rem;cursor:pointer;padding:0}
+    .close:hover{color:#fff}
+    .chart{height:16rem}
+    .hidden{display:none}
+    .sess{background:#111;border-radius:.5rem;padding:.75rem;margin-bottom:.5rem}
+    .sess-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;font-size:.875rem}
+    .sess-date{color:#9ca3af}
+    .sess-stats{color:#60a5fa;font-weight:600}
+    .sess-tasks{display:flex;gap:.25rem;flex-wrap:wrap}
+    .sess-task{padding:.25rem .5rem;border-radius:.25rem;font-size:.75rem;display:flex;align-items:center;gap:.25rem}
+    .sess-task.full{background:#10b981}
+    .sess-task.skipdone{background:#34d399}
+    .sess-task.partial{background:#f59e0b}
+    .sess-task.skip{background:#ef4444}
+    .sess-task .used{color:rgba(255,255,255,0.7);font-size:.7rem}
+    .encourage{color:#f59e0b;font-size:.7rem;margin-top:.25rem}
+    .tasks{display:flex;gap:.25rem;margin-top:1rem;flex-wrap:wrap}
+    .task{width:2rem;height:2rem;background:#374151;border-radius:.25rem;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:600;cursor:pointer;transition:all .2s}
+    .task:hover{background:#4b5563}
+    .task.done{background:#10b981}.task.skipdone{background:#34d399}.task.skip{background:#ef4444}.task.current{background:#f59e0b;animation:pulse 1s infinite}
+    .task.resumable{background:#ec4899;cursor:pointer}
+    .task.resumable:hover{background:#db2777}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+    #qrDisplay{text-align:center;padding:1rem}
+    #qrCanvas{background:#fff;padding:1rem;border-radius:.5rem;display:inline-block;min-height:320px;min-width:320px}
+    #qrCanvas img{width:300px;height:300px;display:block;margin:0 auto}
+    #scanVideo{width:100%;max-width:500px;border-radius:.5rem;background:#000}
+    #scanStatus{margin-top:1rem;color:#9ca3af;font-size:.875rem}
+    #vibSlider:before{position:absolute;content:"";height:1.125rem;width:1.125rem;left:.1875rem;bottom:.1875rem;background:#fff;border-radius:50%;transition:.3s}
+    input:checked + #vibSlider{background:#10b981}
+    input:checked + #vibSlider:before{transform:translateX(1.5rem)}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>MD-Timer Mini</h1>
+
+    <div id="editor">
+      <div class="card">
+        <div class="btn-group">
+          <button class="b1" onclick="app.ins('1 min')">+1m</button>
+          <button class="b1" onclick="app.ins('5 min')">+5m</button>
+          <button class="b2" onclick="app.ins('10 min')">+10m</button>
+          <button class="b2" onclick="app.ins('25 min')">+25m</button>
+        </div>
+        <textarea id="inp" placeholder="# Morning&#10;5 min: Deep work&#10;1 min: Break&#10;&#10;# Afternoon&#10;25 min: Pomodoro"></textarea>
+        <div class="info">Tasks: <span id="cnt">0</span> • Total: <span id="totalTime">0:00</span> • Target: <span id="target">--:--</span></div>
+        <div id="taskHoverLabel" style="min-height:1.5rem;font-size:.875rem;color:#60a5fa;margin-top:.5rem;text-align:center;font-weight:600"></div>
+        <div class="tasks" id="taskList"></div>
+      </div>
+      <div class="flex gap">
+        <button class="b3" onclick="app.start()" id="start">Start</button>
+        <button class="b6" onclick="app.graph()">Graph</button>
+        <button class="b6" onclick="app.settings()">Settings</button>
+      </div>
+      <div class="flex gap" style="margin-top:.5rem">
+        <button class="b1" onclick="app.exportQR()" style="flex:1">📤 Export QR</button>
+        <button class="b2" onclick="app.importQR()" style="flex:1">📥 Scan QR</button>
+      </div>
+    </div>
+
+    <div id="timer" class="hidden">
+      <div class="card timer">
+        <h2 id="lbl"></h2>
+        <div id="routineBadge" class="hidden" style="text-align:center;margin-bottom:.5rem">
+          <span class="routine-badge">
+            <span style="font-size:.8rem">#</span>
+            <span id="routineName"></span>
+          </span>
+        </div>
+        <div class="time" id="tm">00:00</div>
+        <div class="center">Task <span id="idx">1</span> of <span id="tot">1</span></div>
+        <div class="flex gap" style="justify-content:center;margin-bottom:1rem">
+          <button class="b1" onclick="app.previousTask()" id="backBtn" style="padding:.75rem 1rem;font-size:.875rem">← Back</button>
+          <button class="b4" onclick="app.pause()" id="pBtn">Pause</button>
+          <button class="b3" onclick="app.skipDone()" style="padding:.75rem 1rem;font-size:.875rem">Done✓</button>
+          <button class="b1" onclick="app.skip()" style="padding:.75rem 1rem;font-size:.875rem">Skip</button>
+          <button class="b5" onclick="app.stop()">Stop</button>
+        </div>
+        <div id="runTaskHoverLabel" style="min-height:1.5rem;font-size:.875rem;color:#60a5fa;margin-bottom:.5rem;text-align:center;font-weight:600"></div>
+        <div class="tasks" id="runList"></div>
+      </div>
+      <div class="stats">
+        <div class="stat">
+          <div class="val green" id="comp">0</div>
+          <div class="lbl">Completed</div>
+        </div>
+        <div class="stat">
+          <div class="val blue" id="eff">0%</div>
+          <div class="lbl">Efficiency</div>
+        </div>
+        <div class="stat">
+          <div class="val" id="targetTime" style="color:#a78bfa">--:--</div>
+          <div class="lbl">Finish At</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="gModal" class="modal hidden" onclick="app.closeModal(event,'gModal')">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Analytics</h3>
+          <button class="close" onclick="app.closeModal(null,'gModal')">✕</button>
+        </div>
+        <div class="chart"><canvas id="ch"></canvas></div>
+        <div class="chart" style="margin-top:1rem"><canvas id="ch2"></canvas></div>
+        <div id="sessions" style="margin-top:1rem"></div>
+      </div>
+    </div>
+
+    <div id="qrModal" class="modal hidden" onclick="app.closeModal(event,'qrModal')">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Export Tasks</h3>
+          <button class="close" onclick="app.closeModal(null,'qrModal')">✕</button>
+        </div>
+        <div id="qrDisplay">
+          <div id="qrCanvas"></div>
+          <p style="color:#9ca3af;margin-top:1rem">Scan this QR code on another device to import these tasks</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="scanModal" class="modal hidden" onclick="app.closeScan(event)">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Scan QR Code</h3>
+          <button class="close" onclick="app.closeScan()">✕</button>
+        </div>
+        <div style="text-align:center">
+          <video id="scanVideo" autoplay playsinline></video>
+          <div id="scanStatus">Position QR code in camera view...</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="settingsModal" class="modal hidden" onclick="app.closeModal(event,'settingsModal')">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Settings</h3>
+          <button class="close" onclick="app.closeModal(null,'settingsModal')">✕</button>
+        </div>
+        <div style="padding:1rem 0">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:.75rem;background:#111;border-radius:.5rem;margin-bottom:.5rem">
+            <span style="font-size:.875rem;font-weight:600">Vibration</span>
+            <label style="position:relative;display:inline-block;width:3rem;height:1.5rem">
+              <input type="checkbox" id="vibToggle" onchange="app.toggleVib()" style="opacity:0;width:0;height:0">
+              <span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#374151;border-radius:1.5rem;transition:.3s" id="vibSlider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="scoreModal" class="modal hidden" onclick="app.closeScoreModal()">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Session Complete!</h3>
+          <button class="close" onclick="app.closeScoreModal()">✕</button>
+        </div>
+        <div style="padding:1rem 0">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem">
+            <div style="background:#111;padding:1rem;border-radius:.5rem;text-align:center">
+              <div style="font-size:2.5rem;font-weight:700;color:#10b981" id="scoreComp">0</div>
+              <div style="font-size:.875rem;color:#9ca3af;margin-top:.25rem">Fully Completed</div>
+            </div>
+            <div style="background:#111;padding:1rem;border-radius:.5rem;text-align:center">
+              <div style="font-size:2.5rem;font-weight:700;color:#34d399" id="scoreDoneSkip">0</div>
+              <div style="font-size:.875rem;color:#9ca3af;margin-top:.25rem">Done Early (✓)</div>
+            </div>
+            <div style="background:#111;padding:1rem;border-radius:.5rem;text-align:center">
+              <div style="font-size:2.5rem;font-weight:700;color:#ef4444" id="scoreSkip">0</div>
+              <div style="font-size:.875rem;color:#9ca3af;margin-top:.25rem">Skipped</div>
+            </div>
+            <div style="background:#111;padding:1rem;border-radius:.5rem;text-align:center">
+              <div style="font-size:2.5rem;font-weight:700;color:#60a5fa" id="scoreEff">0%</div>
+              <div style="font-size:.875rem;color:#9ca3af;margin-top:.25rem">Efficiency</div>
+            </div>
+          </div>
+          <button onclick="app.closeScoreModal()" class="b3" style="width:100%;padding:1rem">Continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <script>
+    const $=(id)=>document.getElementById(id);
+    const app={
+      ts:[],run:0,i:0,p:0,int:null,ch:null,ch2:null,stream:null,scanInt:null,vibEnabled:true,pauseStart:null,totalPauseTime:0,pauseCount:0,targetTime:0,sessionStartTime:0,
+      
+      init(){
+        const s=localStorage.getItem('inp');
+        if(s){inp.value=s;this.parse()}
+        inp.oninput=()=>this.save();
+        const v=localStorage.getItem('vib');
+        this.vibEnabled=v===null?true:v==='true';
+        const h=localStorage.getItem('textareaHeight');
+        if(h)inp.style.height=h;
+        const ro=new ResizeObserver(()=>{
+          localStorage.setItem('textareaHeight',inp.style.height)
+        });
+        ro.observe(inp);
+        editor.classList.remove('hidden')
+      },
+      
+      parse(){
+        const ls=inp.value.split('\n').filter(l=>l.trim());
+        let currentRoutine=null;
+        this.ts=ls.map((l,i)=>{
+          const routineMatch=l.match(/^#\s+(.+)$/);
+          if(routineMatch){
+            currentRoutine=routineMatch[1].trim();
+            return null;
+          }
+          const m=l.match(/^(\d+(?:\.\d+)?)\s*(sec|min|m|s):\s*(.+)$/i);
+          if(!m)return null;
+          const[,n,u,lb]=m;
+          let s=parseFloat(n);
+          if(u.toLowerCase().startsWith('m'))s*=60;
+          return{id:Date.now()+i,label:lb.trim(),dur:Math.round(s),left:Math.round(s),remaining:Math.round(s),done:0,skip:0,skipdone:0,completed:0,routine:currentRoutine}
+        }).filter(Boolean);
+        $('cnt').textContent=this.ts.length;
+        this.targetTime=this.ts.reduce((sum,t)=>sum+t.dur,0);
+        $('totalTime').textContent=this.fmtLong(this.targetTime);
+        if(this.ts.length>0){
+          const now=new Date();
+          const targetDate=new Date(now.getTime()+this.targetTime*1000);
+          $('target').textContent=targetDate.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+        }else{
+          $('target').textContent='--:--';
+        }
+        $('start').disabled=!this.ts.length;
+        this.renderTasks()
+      },
+      
+      renderTasks(running){
+        const list=running?$('runList'):$('taskList');
+        const labelId=running?'runTaskHoverLabel':'taskHoverLabel';
+        list.innerHTML=this.ts.map((t,i)=>{
+          if(running){
+            const c=t.done?'done':t.skipdone?'skipdone':t.skip?'skip':i===this.i?'current':'resumable';
+            return`<div class="task ${c}" onclick="app.resumeFrom(${i})" onmouseenter="app.showTaskLabel('${labelId}',${i})" onmouseleave="app.hideTaskLabel('${labelId}')">${i+1}</div>`
+          }
+          return`<div class="task resumable" onclick="app.startFrom(${i})" onmouseenter="app.showTaskLabel('${labelId}',${i})" onmouseleave="app.hideTaskLabel('${labelId}')">${i+1}</div>`
+        }).join('')
+      },
+      
+      save(){
+        localStorage.setItem('inp',inp.value);
+        this.parse()
+      },
+      
+      ins(s){
+        const textarea=inp;
+        const pos=textarea.selectionStart||inp.value.length;
+        const before=inp.value.substring(0,pos);
+        const after=inp.value.substring(pos);
+        const prefix=before&&!before.endsWith('\n')?'\n':'';
+        inp.value=before+prefix+s+': \n'+after;
+        setTimeout(()=>{
+          const newPos=pos+prefix.length+s.length+2;
+          textarea.selectionStart=textarea.selectionEnd=newPos;
+          textarea.focus();
+        },0);
+        this.save()
+      },
+      
+      start(){
+        if(!this.ts.length)return;
+        this.run=1;this.i=0;
+        this.totalPauseTime=0;
+        this.pauseCount=0;
+        this.pauseStart=null;
+        this.sessionStartTime=Date.now();
+        this.ts.forEach(t=>{t.done=0;t.skip=0;t.skipdone=0;t.completed=0;t.left=t.dur;t.remaining=t.dur});
+        editor.classList.add('hidden');
+        timer.classList.remove('hidden');
+        this.updateUI();
+        this.execTask()
+      },
+      
+      startFrom(idx){
+        if(!this.ts.length||idx<0||idx>=this.ts.length)return;
+        this.run=1;this.i=idx;
+        this.totalPauseTime=0;
+        this.pauseCount=0;
+        this.pauseStart=null;
+        this.sessionStartTime=Date.now();
+        this.ts.forEach(t=>{t.done=0;t.skip=0;t.skipdone=0;t.completed=0;t.left=t.dur;t.remaining=t.dur});
+        editor.classList.add('hidden');
+        timer.classList.remove('hidden');
+        this.updateUI();
+        this.execTask()
+      },
+      
+      resumeFrom(idx){
+        if(!this.run||idx<0||idx>=this.ts.length||idx===this.i)return;
+        clearInterval(this.int);
+        this.i=idx;
+        this.updateUI();
+        this.execTask()
+      },
+      
+      execTask(){
+        if(this.i>=this.ts.length){this.stop();return}
+        const t=this.ts[this.i];
+        t.startLeft=t.left;
+        $('lbl').textContent=t.label;
+        if(t.routine){
+          $('routineBadge').classList.remove('hidden');
+          $('routineName').textContent=t.routine;
+        }else{
+          $('routineBadge').classList.add('hidden');
+        }
+        $('idx').textContent=this.i+1;
+        $('tot').textContent=this.ts.length;
+        $('backBtn').disabled=this.i===0;
+        this.renderTasks(1);
+        this.int=setInterval(()=>{
+          if(!this.p&&t.left>0){
+            t.left--;
+            t.remaining=t.left;
+            this.updateUI()
+          }
+          if(t.left<=0){
+            clearInterval(this.int);
+            t.done=1;
+            t.completed=1;
+            t.remaining=0;
+            this.vibrate();
+            this.i++;
+            this.execTask()
+          }
+        },1000)
+      },
+      
+      pause(){
+        if(!this.p){
+          this.pauseStart=Date.now();
+          this.pauseCount++;
+        }else{
+          if(this.pauseStart){
+            const pauseDuration=Math.floor((Date.now()-this.pauseStart)/1000);
+            this.totalPauseTime+=pauseDuration;
+            this.pauseStart=null;
+          }
+        }
+        this.p=!this.p;
+        $('pBtn').textContent=this.p?'Resume':'Pause'
+      },
+      
+      skipDone(){
+        if(this.ts[this.i]){
+          clearInterval(this.int);
+          const t=this.ts[this.i];
+          t.skipdone=1;
+          t.done=1;
+          t.completed=1;
+          t.timeUsed=t.startLeft-t.left;
+          this.vibrate();
+          this.i++;
+          this.execTask()
+        }
+      },
+      
+      skip(){
+        if(this.ts[this.i]){
+          clearInterval(this.int);
+          const t=this.ts[this.i];
+          t.skip=1;
+          t.timeUsed=t.startLeft-t.left;
+          this.i++;
+          this.execTask()
+        }
+      },
+      
+      previousTask(){
+        if(this.i>0){
+          clearInterval(this.int);
+          this.i--;
+          const t=this.ts[this.i];
+          t.done=0;
+          t.skip=0;
+          t.skipdone=0;
+          t.completed=0;
+          t.left=t.dur;
+          t.remaining=t.dur;
+          this.execTask()
+        }
+      },
+      
+      stop(){
+        clearInterval(this.int);
+        this.run=0;this.p=0;
+        const hasProgress=this.ts.some(t=>t.completed||t.skip||t.skipdone);
+        if(this.ts.length&&hasProgress){
+          this.saveSess();
+          this.showScore();
+        }else{
+          timer.classList.add('hidden');
+          editor.classList.remove('hidden');
+        }
+      },
+      
+      showScore(){
+        const fullComp=this.ts.filter(t=>t.completed&&!t.skipdone&&!t.skip).length;
+        const doneSkip=this.ts.filter(t=>t.skipdone).length;
+        const skipped=this.ts.filter(t=>t.skip&&!t.completed).length;
+        const eff=this.calcEfficiency();
+        $('scoreComp').textContent=fullComp;
+        $('scoreDoneSkip').textContent=doneSkip;
+        $('scoreSkip').textContent=skipped;
+        $('scoreEff').textContent=eff+'%';
+        $('scoreModal').classList.remove('hidden');
+      },
+      
+      closeScoreModal(){
+        $('scoreModal').classList.add('hidden');
+        editor.classList.remove('hidden');
+      },
+      
+      showSessionScore(idx){
+        const ss=this.getSessions();
+        if(!ss[idx])return;
+        const s=ss[idx];
+        $('scoreComp').textContent=s.completed||0;
+        $('scoreDoneSkip').textContent=s.doneSkip||0;
+        $('scoreSkip').textContent=s.skipped||0;
+        $('scoreEff').textContent=s.efficiency+'%';
+        $('scoreModal').classList.remove('hidden');
+      },
+      
+      showTaskLabel(labelId,idx){
+        if(this.ts[idx]){
+          $(labelId).textContent=this.ts[idx].label;
+        }
+      },
+      
+      hideTaskLabel(labelId){
+        $(labelId).textContent='';
+      },
+      
+      getSessions(){
+        return JSON.parse(localStorage.getItem('ss')||'[]');
+      },
+      
+      updateUI(){
+        const t=this.ts[this.i];
+        if(t)$('tm').textContent=this.fmt(t.left);
+        const eff=this.calcEfficiency();
+        const c=this.ts.filter(t=>t.completed&&!t.skip).length;
+        $('comp').textContent=c;
+        $('eff').textContent=eff+'%';
+        if(this.run){
+          let remaining=0;
+          for(let i=this.i;i<this.ts.length;i++){
+            remaining+=this.ts[i].remaining||0;
+          }
+          const now=new Date();
+          const targetDate=new Date(now.getTime()+remaining*1000);
+          $('targetTime').textContent=targetDate.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+        }
+        this.renderTasks(1)
+      },
+      
+      calcEfficiency(){
+        let totalCredit=0;
+        let totalPossible=0;
+        
+        this.ts.forEach(t=>{
+          totalPossible+=100;
+          if(t.completed&&!t.skip){
+            const timeUsed=t.timeUsed||t.dur;
+            const pct=(timeUsed/t.dur)*100;
+            if(t.skipdone){
+              totalCredit+=pct;
+            }else{
+              totalCredit+=100;
+            }
+          }
+        });
+        
+        const baseBonus=3;
+        totalCredit+=baseBonus;
+        totalPossible+=baseBonus;
+        
+        if(this.pauseCount>0){
+          const avgPauseTime=this.totalPauseTime/this.pauseCount;
+          if(avgPauseTime<=60){
+            const pauseBonus=Math.max(0,2-this.pauseCount*0.3);
+            totalCredit+=pauseBonus;
+            totalPossible+=pauseBonus;
+          }else if(avgPauseTime<=180){
+            const pausePenalty=Math.min(5,(avgPauseTime-60)/60);
+            totalPossible+=pausePenalty;
+          }else{
+            const pausePenalty=Math.min(10,(avgPauseTime-60)/30);
+            totalPossible+=pausePenalty;
+          }
+        }
+        
+        return this.ts.length?Math.round((totalCredit/totalPossible)*100):0
+      },
+      
+      saveSess(){
+        const ss=this.getSessions();
+        const fullComp=this.ts.filter(t=>t.completed&&!t.skipdone&&!t.skip).length;
+        const doneSkip=this.ts.filter(t=>t.skipdone).length;
+        const skipped=this.ts.filter(t=>t.skip&&!t.completed).length;
+        const e=this.calcEfficiency();
+        const actualTime=Math.floor((Date.now()-this.sessionStartTime)/1000);
+        const hitTarget=actualTime<=this.targetTime;
+        ss.push({
+          date:new Date().toISOString(),
+          total:this.ts.length,
+          completed:fullComp,
+          doneSkip:doneSkip,
+          skipped:skipped,
+          efficiency:e,
+          pauseTime:this.totalPauseTime,
+          pauseCount:this.pauseCount,
+          targetTime:this.targetTime,
+          actualTime:actualTime,
+          hitTarget:hitTarget,
+          tasks:this.ts.map(t=>({
+            label:t.label,
+            dur:t.dur,
+            timeUsed:t.timeUsed||t.dur,
+            done:t.done,
+            skip:t.skip,
+            skipdone:t.skipdone,
+            completed:t.completed,
+            routine:t.routine
+          }))
+        });
+        if(ss.length>50)ss.shift();
+        localStorage.setItem('ss',JSON.stringify(ss))
+      },
+      
+      graph(){
+        $('gModal').classList.remove('hidden');
+        setTimeout(()=>this.renderGraph(),100)
+      },
+      
+      closeModal(e,id){
+        if(!e||e.target===e.currentTarget)$(id).classList.add('hidden')
+      },
+      
+      renderGraph(){
+        const c=$('ch');
+        if(!c)return;
+        if(this.ch)this.ch.destroy();
+        if(this.ch2)this.ch2.destroy();
+        const ss=this.getSessions();
+        const ls=ss.map((_,i)=>'S'+(i+1));
+        const d=ss.map(s=>s.efficiency);
+        const pauseData=ss.map(s=>(s.pauseTime||0)/60);
+        
+        const taskPoints=[];
+        ss.forEach((s,sessIdx)=>{
+          if(!s.tasks)return;
+          s.tasks.forEach((t,taskIdx)=>{
+            let efficiency=0;
+            let color='#ef4444';
+            let label='Skipped';
+            
+            if(t.completed&&!t.skip){
+              const timeUsed=t.timeUsed||t.dur;
+              efficiency=Math.round((timeUsed/t.dur)*100);
+              if(t.skipdone){
+                color='#14b8a6';
+                label='Done✓ Early';
+              }else if(timeUsed===t.dur){
+                color='#10b981';
+                label='Full';
+                efficiency=100;
+              }else{
+                color='#14b8a6';
+                label='Partial';
+              }
+            }
+            
+            const taskOffset=(taskIdx-(s.tasks.length-1)/2)*0.15;
+            
+            taskPoints.push({
+              x:sessIdx+taskOffset,
+              y:efficiency,
+              taskName:t.label,
+              duration:this.fmtLong(t.dur),
+              timeUsed:this.fmtLong(t.timeUsed||0),
+              status:label,
+              color:color,
+              routine:t.routine||null
+            });
+          });
+        });
+        
+        this.ch=new Chart(c.getContext('2d'),{
+          type:'line',
+          data:{
+            labels:ls.length?ls:['No data'],
+            datasets:[
+              {
+                label:'Efficiency %',
+                data:d.length?d:[0],
+                borderColor:'rgb(16,185,129)',
+                backgroundColor:'rgba(16,185,129,0.1)',
+                tension:.4,
+                fill:!0,
+                yAxisID:'y',
+                order:2
+              },
+              {
+                label:'Pause Time (min)',
+                data:pauseData.length?pauseData:[0],
+                borderColor:'rgb(245,158,11)',
+                backgroundColor:'rgba(245,158,11,0.1)',
+                tension:.4,
+                fill:!0,
+                yAxisID:'y1',
+                order:3
+              },
+              {
+                label:'Tasks',
+                data:taskPoints,
+                type:'scatter',
+                backgroundColor:taskPoints.map(p=>p.color),
+                borderColor:taskPoints.map(p=>p.color),
+                borderWidth:2,
+                pointRadius:6,
+                pointHoverRadius:8,
+                yAxisID:'y',
+                order:1,
+                parsing:{
+                  xAxisKey:'x',
+                  yAxisKey:'y'
+                }
+              }
+            ]
+          },
+          options:{
+            responsive:!0,
+            maintainAspectRatio:!1,
+            plugins:{
+              legend:{labels:{color:'#fff'}},
+              tooltip:{
+                callbacks:{
+                  title:(items)=>{
+                    if(items.length>0&&items[0].datasetIndex===2){
+                      return '';
+                    }
+                    return Chart.defaults.plugins.tooltip.callbacks.title(items);
+                  },
+                  label:(context)=>{
+                    if(context.datasetIndex===2){
+                      return context.raw.taskName;
+                    }
+                    return context.dataset.label+': '+context.formattedValue;
+                  }
+                },
+                displayColors:!1,
+                backgroundColor:'#000',
+                padding:10,
+                bodyFont:{size:15,weight:'bold'},
+                titleFont:{size:0}
+              }
+            },
+            scales:{
+              y:{
+                type:'linear',
+                position:'left',
+                beginAtZero:!0,
+                max:100,
+                ticks:{color:'#fff'},
+                grid:{color:'rgba(255,255,255,0.1)'}
+              },
+              y1:{
+                type:'linear',
+                position:'right',
+                beginAtZero:!0,
+                ticks:{color:'#fff'},
+                grid:{display:!1}
+              },
+              x:{ticks:{color:'#fff'},grid:{color:'rgba(255,255,255,0.1)'}}
+            }
+          }
+        });
+
+        if(ss.length>0){
+          const datasets=[
+            {
+              label:'Completed (Full)',
+              data:ss.map(s=>s.completed||0),
+              backgroundColor:'rgb(16,185,129)',
+              stack:'stack1'
+            },
+            {
+              label:'Done✓ (Early)',
+              data:ss.map(s=>s.doneSkip||0),
+              backgroundColor:'rgb(52,211,153)',
+              stack:'stack1'
+            },
+            {
+              label:'Skipped',
+              data:ss.map(s=>s.skipped||0),
+              backgroundColor:'rgb(239,68,68)',
+              stack:'stack1'
+            }
+          ];
+
+          this.ch2=new Chart($('ch2').getContext('2d'),{
+            type:'bar',
+            data:{labels:ls,datasets},
+            options:{
+              responsive:!0,
+              maintainAspectRatio:!1,
+              plugins:{
+                legend:{labels:{color:'#fff'}},
+                title:{display:!0,text:'Task Breakdown',color:'#fff',font:{size:14}}
+              },
+              scales:{
+                y:{stacked:!0,beginAtZero:!0,ticks:{color:'#fff'},grid:{color:'rgba(255,255,255,0.1)'}},
+                x:{stacked:!0,ticks:{color:'#fff'},grid:{color:'rgba(255,255,255,0.1)'}}
+              }
+            }
+          });
+        }
+
+        this.renderSessions(ss)
+      },
+      
+      renderSessions(ss){
+        if(!ss.length)return $('sessions').innerHTML='<p style="text-align:center;color:#9ca3af;padding:2rem">No sessions yet</p>';
+        const h=ss.slice().reverse().map((s,idx)=>{
+          const dt=new Date(s.date);
+          const time=dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+          const date=dt.toLocaleDateString([],{month:'short',day:'numeric'});
+          const pauseInfo=s.pauseTime>0?` • ⏸️ ${Math.floor(s.pauseTime/60)}m ${s.pauseTime%60}s`:'';
+          const targetHit=s.hitTarget?' 🎯':'';
+          const fullComp=s.completed||0;
+          const doneSkip=s.doneSkip||0;
+          const skipped=s.skipped||0;
+          const sessIdx=ss.length-1-idx;
+          return`
+            <div class="sess">
+              <div class="sess-header">
+                <span class="sess-date">${date} ${time}${targetHit}</span>
+                <span class="sess-stats">${s.efficiency}% • ${fullComp+doneSkip}/${s.total}${pauseInfo}</span>
+              </div>
+              <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem;align-items:center">
+                ${fullComp>0?`<div style="padding:.25rem .5rem;border-radius:.25rem;background:#10b981;font-size:.75rem">✓ ${fullComp} Full</div>`:''}
+                ${doneSkip>0?`<div style="padding:.25rem .5rem;border-radius:.25rem;background:#34d399;font-size:.75rem">✓ ${doneSkip} Early</div>`:''}
+                ${skipped>0?`<div style="padding:.25rem .5rem;border-radius:.25rem;background:#ef4444;font-size:.75rem">✗ ${skipped} Skip</div>`:''}
+                <button onclick="app.showSessionScore(${sessIdx})" class="b6" style="padding:.25rem .5rem;font-size:.75rem;margin-left:auto">View Score</button>
+              </div>
+            </div>
+          `
+        }).join('');
+        $('sessions').innerHTML=h
+      },
+      
+      fmt(s){
+        const m=Math.floor(s/60);
+        const sc=s%60;
+        return m.toString().padStart(2,'0')+':'+sc.toString().padStart(2,'0')
+      },
+      
+      fmtLong(s){
+        const h=Math.floor(s/3600);
+        const m=Math.floor((s%3600)/60);
+        const sc=s%60;
+        if(h>0)return`${h}:${m.toString().padStart(2,'0')}:${sc.toString().padStart(2,'0')}`;
+        return`${m}:${sc.toString().padStart(2,'0')}`
+      },
+      
+      vibrate(){
+        if(this.vibEnabled&&'vibrate'in navigator)navigator.vibrate([200,100,200])
+      },
+      
+      settings(){
+        $('settingsModal').classList.remove('hidden');
+        $('vibToggle').checked=this.vibEnabled;
+        this.updateVibSlider()
+      },
+      
+      toggleVib(){
+        this.vibEnabled=$('vibToggle').checked;
+        localStorage.setItem('vib',this.vibEnabled);
+        this.updateVibSlider()
+      },
+      
+      updateVibSlider(){
+        $('vibSlider').style.background=this.vibEnabled?'#10b981':'#374151'
+      },
+      
+      exportQR(){
+        if(!inp.value.trim())return alert('Please enter some tasks first!');
+        const data=JSON.stringify({v:1,t:'mdtimer',c:inp.value,ts:Date.now()});
+        const url=`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(data)}`;
+        
+        const canvas=$('qrCanvas');
+        const img=document.createElement('img');
+        img.src=url;
+        img.alt='QR Code';
+        img.onerror=()=>canvas.innerHTML='<p style="color:#ef4444">Failed to load QR</p>';
+        
+        canvas.innerHTML='';
+        canvas.appendChild(img);
+        $('qrModal').classList.remove('hidden')
+      },
+      
+      async importQR(){
+        try{
+          this.stream=await navigator.mediaDevices.getUserMedia({
+            video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}
+          });
+          $('scanVideo').srcObject=this.stream;
+          $('scanModal').classList.remove('hidden');
+          $('scanStatus').textContent='Position QR code in camera view...';
+          $('scanStatus').style.color='#9ca3af';
+          this.startScan()
+        }catch(err){
+          alert('Camera access required. Please allow camera access.\n\nError: '+err.message)
+        }
+      },
+      
+      startScan(){
+        const canvas=document.createElement('canvas');
+        const ctx=canvas.getContext('2d');
+        const video=$('scanVideo');
+        this.scanInt=setInterval(()=>{
+          if(video.readyState===video.HAVE_ENOUGH_DATA){
+            canvas.width=video.videoWidth;
+            canvas.height=video.videoHeight;
+            ctx.drawImage(video,0,0,canvas.width,canvas.height);
+            const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
+            const code=jsQR(imgData.data,imgData.width,imgData.height);
+            if(code)this.processQR(code.data)
+          }
+        },200)
+      },
+      
+      processQR(raw){
+        try{
+          const data=JSON.parse(raw);
+          if(data.t==='mdtimer'&&data.c){
+            this.stopScan();
+            inp.value=data.c;
+            this.save();
+            const s=$('scanStatus');
+            s.textContent='✓ Tasks imported successfully!';
+            s.style.color='#10b981';
+            setTimeout(()=>this.closeScan(),1500)
+          }else{
+            $('scanStatus').textContent='⚠ Invalid QR code format';
+            $('scanStatus').style.color='#f59e0b'
+          }
+        }catch(err){
+          $('scanStatus').textContent='⚠ Could not read QR code';
+          $('scanStatus').style.color='#ef4444'
+        }
+      },
+      
+      stopScan(){
+        if(this.scanInt){clearInterval(this.scanInt);this.scanInt=null}
+        if(this.stream){
+          this.stream.getTracks().forEach(t=>t.stop());
+          this.stream=null;
+          $('scanVideo').srcObject=null
+        }
+      },
+      
+      closeScan(e){
+        if(!e||e.target===e.currentTarget){
+          this.stopScan();
+          $('scanModal').classList.add('hidden');
+          $('scanStatus').textContent='Position QR code in camera view...';
+          $('scanStatus').style.color='#9ca3af'
+        }
+      }
+    };
+    app.init()
+  </script>
+</body>
+</html>
