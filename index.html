@@ -3,1743 +3,926 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MD-Timer</title>
-
-  <!-- PWA Meta Tags -->
-  <meta name="description" content="A markdown-based task timer with routine support for productivity and time management">
-  <meta name="theme-color" content="#10b981">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="MD-Timer">
-  <link rel="manifest" href="/manifest.json">
-  <link rel="icon" type="image/png" href="/icons/icon-192.png">
-  <link rel="apple-touch-icon" href="/icons/icon-192.png">
-
-  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+  <title>MD-Timer Mini</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
-    * {
-      font-family: 'Inter', sans-serif;
-    }
-
-    body {
-      margin: 0;
-      padding: 0;
-      overflow-x: hidden;
-    }
-
-    .task-item {
-      cursor: grab;
-      transition: all 0.2s;
-    }
-
-    .task-item:active {
-      cursor: grabbing;
-    }
-
-    .task-item.dragging {
-      opacity: 0.5;
-    }
-
-    .task-item:hover {
-      transform: translateX(4px);
-    }
-
-    .floating-btn {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      z-index: 50;
-      box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
-    }
-
-    @media (max-width: 640px) {
-      .floating-btn {
-        bottom: 16px;
-        right: 16px;
-      }
-    }
-
-    .minimized-timer {
-      position: fixed;
-      bottom: 24px;
-      left: 24px;
-      z-index: 40;
-      cursor: pointer;
-      transition: transform 0.2s;
-    }
-
-    .minimized-timer:hover {
-      transform: scale(1.05);
-    }
-
-    .chart-tooltip {
-      background: rgba(0, 0, 0, 0.9);
-      padding: 8px 12px;
-      border-radius: 6px;
-    }
+    *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,sans-serif}
+    body{background:#111;color:#fff;min-height:100vh;padding:1rem}
+    .container{max-width:42rem;margin:0 auto}
+    h1{font-size:1.5rem;font-weight:700;margin-bottom:1.5rem;text-align:center;background:linear-gradient(to right,#60a5fa,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .card{background:#1f2937;border-radius:.5rem;padding:1rem;margin-bottom:1rem}
+    .btn-group{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem}
+    button{padding:.5rem 1rem;border:none;border-radius:.5rem;font-weight:600;cursor:pointer;transition:all .2s;font-size:.875rem;color:#fff}
+    button:disabled{background:#374151;cursor:not-allowed;opacity:.5}
+    .b1{background:#3b82f6}.b1:hover:not(:disabled){background:#2563eb}
+    .b2{background:#6366f1}.b2:hover:not(:disabled){background:#4f46e5}
+    .b3{background:#10b981;flex:1;padding:.75rem;font-size:1rem}.b3:hover:not(:disabled){background:#059669}
+    .b4{background:#f59e0b;padding:.75rem 1.5rem;font-size:1rem}.b4:hover{background:#d97706}
+    .b5{background:#ef4444;padding:.75rem 1.5rem;font-size:1rem}.b5:hover{background:#dc2626}
+    .b6{background:#8b5cf6;padding:.75rem 1rem}.b6:hover{background:#7c3aed}
+    .b7{background:#f97316;padding:.75rem 1rem}.b7:hover{background:#ea580c}
+    textarea{width:100%;height:16rem;padding:.75rem;background:#111;color:#fff;border:none;border-radius:.5rem;resize:vertical;font-family:monospace;font-size:.875rem;min-height:10rem;max-height:40rem}
+    textarea:focus{outline:2px solid #3b82f6}
+    @media(min-width:768px){textarea{height:24rem;font-size:1rem}}
+    @media(max-width:640px){textarea{height:14rem}}
+    .info{font-size:.875rem;color:#9ca3af;margin-top:.5rem}
+    .flex{display:flex}.gap{gap:.5rem}
+    .timer h2{font-size:1.25rem;font-weight:700;margin-bottom:1rem;text-align:center}
+    .time{font-size:3.75rem;font-weight:700;text-align:center;margin-bottom:1rem;font-variant-numeric:tabular-nums}
+    .center{text-align:center;color:#9ca3af;margin-bottom:1.5rem}
+    .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;text-align:center}
+    .stat{background:#1f2937;padding:.75rem;border-radius:.5rem}
+    .val{font-size:1.5rem;font-weight:700}
+    .green{color:#34d399}.blue{color:#60a5fa}
+    .lbl{font-size:.75rem;color:#9ca3af;margin-top:.25rem}
+    .routine-badge{display:inline-flex;align-items:center;gap:.25rem;padding:.125rem .375rem;background:#8b5cf6;border-radius:.25rem;font-size:.7rem;margin-left:.5rem}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.9);display:flex;align-items:center;justify-content:center;padding:1rem;z-index:50}
+    .modal-content{background:#1f2937;border-radius:.5rem;padding:1.5rem;max-width:42rem;width:100%;max-height:80vh;overflow-y:auto}
+    .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+    .modal-header h3{font-size:1.25rem;font-weight:700}
+    .close{background:none;border:none;color:#9ca3af;font-size:1.5rem;cursor:pointer;padding:0}
+    .close:hover{color:#fff}
+    .chart{height:16rem}
+    .hidden{display:none}
+    .sess{background:#111;border-radius:.5rem;padding:.75rem;margin-bottom:.5rem}
+    .sess-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;font-size:.875rem}
+    .sess-date{color:#9ca3af}
+    .sess-stats{color:#60a5fa;font-weight:600}
+    .sess-tasks{display:flex;gap:.25rem;flex-wrap:wrap}
+    .sess-task{padding:.25rem .5rem;border-radius:.25rem;font-size:.75rem;display:flex;align-items:center;gap:.25rem}
+    .sess-task.full{background:#10b981}
+    .sess-task.skipdone{background:#34d399}
+    .sess-task.partial{background:#f59e0b}
+    .sess-task.skip{background:#ef4444}
+    .sess-task .used{color:rgba(255,255,255,0.7);font-size:.7rem}
+    .encourage{color:#f59e0b;font-size:.7rem;margin-top:.25rem}
+    .tasks{display:flex;gap:.25rem;margin-top:1rem;flex-wrap:wrap}
+    .task{width:2rem;height:2rem;background:#374151;border-radius:.25rem;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:600;cursor:pointer;transition:all .2s}
+    .task:hover{background:#4b5563}
+    .task.done{background:#10b981}.task.skipdone{background:#34d399}.task.skip{background:#ef4444}.task.current{background:#f59e0b;animation:pulse 1s infinite}
+    .task.resumable{background:#ec4899;cursor:pointer}
+    .task.resumable:hover{background:#db2777}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+    #qrDisplay{text-align:center;padding:1rem}
+    #qrCanvas{background:#fff;padding:1rem;border-radius:.5rem;display:inline-block;min-height:320px;min-width:320px}
+    #qrCanvas img{width:300px;height:300px;display:block;margin:0 auto}
+    #scanVideo{width:100%;max-width:500px;border-radius:.5rem;background:#000}
+    #scanStatus{margin-top:1rem;color:#9ca3af;font-size:.875rem}
+    #vibSlider:before{position:absolute;content:"";height:1.125rem;width:1.125rem;left:.1875rem;bottom:.1875rem;background:#fff;border-radius:50%;transition:.3s}
+    input:checked + #vibSlider{background:#10b981}
+    input:checked + #vibSlider:before{transform:translateX(1.5rem)}
   </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen">
-  <div id="app"></div>
-
-  <script>
-    const { createApp, ref, computed, onMounted, watch } = Vue;
-
-    createApp({
-      setup() {
-        // State
-        const timerInput = ref('');
-        const timers = ref([]);
-        const isEditMode = ref(true);
-        const isTimerRunning = ref(false);
-        const currentIndex = ref(0);
-        const isPaused = ref(false);
-        const isMinimized = ref(false);
-        const showScore = ref(false);
-        const showSettings = ref(false);
-        const showGraph = ref(false);
-        const tempo = ref(1.0);
-        const sessionData = ref([]);
-        const draggedIndex = ref(null);
-        const expandedSession = ref(null);
-        const showArchive = ref(false);
-        const archivedData = ref([]);
-        const showRoutines = ref(false);
-        const routines = ref([]);
-        const routineName = ref('');
-        let intervalId = null;
-        let chartInstance = null;
-
-        // PWA state
-        let wakeLock = null;
-        let deferredPrompt = null;
-        const showInstallPrompt = ref(false);
-        const notificationPermission = ref('default');
-        let audioContext = null;
-        let notificationSound = null;
-
-        // Settings state
-        const soundEnabled = ref(true);
-        const vibrationEnabled = ref(true);
-
-        // Computed
-        const currentTimer = computed(() => timers.value[currentIndex.value] || null);
-
-        const totalTime = computed(() => {
-          return timers.value.reduce((sum, t) => sum + t.duration, 0);
-        });
-
-        const targetTime = computed(() => {
-          if (!isTimerRunning.value) {
-            // When idle, calculate clock time when all tasks would finish
-            const now = new Date();
-            const totalSeconds = totalTime.value;
-            const targetDate = new Date(now.getTime() + totalSeconds * 1000);
-            return targetDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          }
-
-          // When running, calculate remaining time from current task onwards
-          let remaining = 0;
-          for (let i = currentIndex.value; i < timers.value.length; i++) {
-            remaining += timers.value[i].remaining;
-          }
-
-          // Return clock time when all remaining tasks will complete
-          const now = new Date();
-          const targetDate = new Date(now.getTime() + remaining * 1000);
-          return targetDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        });
-
-        const completedCount = computed(() => {
-          return timers.value.filter(t => t.completed).length;
-        });
-
-        const skippedCount = computed(() => {
-          return timers.value.filter(t => t.skipped).length;
-        });
-
-        const efficiency = computed(() => {
-          if (timers.value.length === 0) return 0;
-          const completed = timers.value.filter(t => t.completed && !t.skipped).length;
-          return Math.round((completed / timers.value.length) * 100);
-        });
-
-        const completedSkippedCount = computed(() => {
-  return timers.value.filter(t => t.completed && t.skipped).length;
-});
-
-const notCompletedCount = computed(() => {
-  return timers.value.filter(t => t.skipped && !t.completed).length;
-});
-
-        const tempoLabel = computed(() => {
-          if (tempo.value === 0.8) return 'Fast (80%)';
-          if (tempo.value === 1.2) return 'Slow (120%)';
-          return 'Standard';
-        });
-
-        // Parse markdown input
-        const parseTimers = () => {
-          if (!timerInput.value.trim()) {
-            timers.value = [];
-            return;
-          }
-
-          const lines = timerInput.value.split('\n').filter(l => l.trim());
-          let currentRoutine = null;
-
-          timers.value = lines.map((line, idx) => {
-            // Check if line is a routine title (starts with #)
-            const routineMatch = line.match(/^#\s+(.+)$/);
-            if (routineMatch) {
-              currentRoutine = routineMatch[1].trim();
-              return null; // Don't create a timer for routine titles
-            }
-
-            const match = line.match(/^(\d+(?:\.\d+)?)\s*(sec|min|hour|h|m|s):\s*(.+)$/i);
-            if (!match) return null;
-
-            const [, num, unit, label] = match;
-            let seconds = parseFloat(num);
-
-            if (unit.toLowerCase().startsWith('m')) seconds *= 60;
-            else if (unit.toLowerCase().startsWith('h')) seconds *= 3600;
-
-            seconds = Math.round(seconds * tempo.value);
-
-            return {
-              id: Date.now() + idx,
-              label: label.trim().charAt(0).toUpperCase() + label.trim().slice(1),
-              duration: seconds,
-              remaining: seconds,
-              completed: false,
-              skipped: false,
-              startTime: null,
-              endTime: null,
-              routine: currentRoutine // Add routine name to timer
-            };
-          }).filter(Boolean);
-        };
-
-        // Timer controls
-        const startTimer = async () => {
-          if (timers.value.length === 0) return;
-
-          isTimerRunning.value = true;
-          isMinimized.value = false;
-          currentIndex.value = 0;
-
-          timers.value.forEach(t => {
-            t.completed = false;
-            t.skipped = false;
-            t.remaining = t.duration;
-            t.startTime = null;
-            t.endTime = null;
-          });
-
-          // PWA features on start
-          await requestWakeLock();
-          await requestNotificationPermission();
-          updateMediaSession();
-          updateBadge();
-
-          runTimer();
-        };
-
-        const runTimer = () => {
-          if (currentIndex.value >= timers.value.length) {
-            stopTimer();
-            return;
-          }
-
-          const timer = timers.value[currentIndex.value];
-          timer.startTime = new Date().toLocaleTimeString();
-          console.log('Starting timer:', timer.label, 'Index:', currentIndex.value);
-
-          intervalId = setInterval(() => {
-            if (!isPaused.value && timer.remaining > 0) {
-              timer.remaining--;
-
-              // Update session data in real-time
-              updateSessionData();
-            }
-
-            if (timer.remaining <= 0) {
-              clearInterval(intervalId);
-              timer.completed = true;
-              timer.endTime = new Date().toLocaleTimeString();
-              console.log('Timer completed:', timer.label);
-
-              // PWA notifications on task completion
-              playNotificationSound();
-              vibrate();
-              showNotification(
-                'Task Complete!',
-                `${timer.label} finished. ${timers.value.length - currentIndex.value - 1} tasks remaining.`
-              );
-              updateBadge();
-
-              currentIndex.value++;
-              console.log('Moving to next timer. New index:', currentIndex.value, 'Total timers:', timers.value.length);
-              if (currentIndex.value < timers.value.length) {
-                updateMediaSession();
-              }
-              runTimer();
-            }
-          }, 1000);
-        };
-
-        const pauseTimer = () => {
-          isPaused.value = !isPaused.value;
-        };
-
-const skipTimer = (didComplete = false) => {
-  if (currentTimer.value) {
-    clearInterval(intervalId);
-    currentTimer.value.skipped = true;
-    currentTimer.value.completed = didComplete; // true if "Y", false if "N"
-    currentTimer.value.endTime = new Date().toLocaleTimeString();
-    currentIndex.value++;
-    runTimer();
-  }
-};
-
-        const previousTimer = () => {
-          if (currentIndex.value > 0) {
-            clearInterval(intervalId);
-            currentIndex.value--;
-            timers.value[currentIndex.value].remaining = timers.value[currentIndex.value].duration;
-            timers.value[currentIndex.value].completed = false;
-            timers.value[currentIndex.value].skipped = false;
-            runTimer();
-          }
-        };
-
-        const stopTimer = () => {
-          clearInterval(intervalId);
-          isTimerRunning.value = false;
-          isPaused.value = false;
-          isMinimized.value = false;
-
-          // Save final session data
-          if (timers.value.length > 0) {
-            saveSessionData();
-          }
-
-          // Release PWA resources
-          releaseWakeLock();
-          if ('clearAppBadge' in navigator) {
-            navigator.clearAppBadge();
-          }
-
-          showScore.value = true;
-        };
-
-        const minimizeTimer = () => {
-          isMinimized.value = true;
-        };
-
-        const restoreTimer = () => {
-          isMinimized.value = false;
-        };
-
-        // Session data
-        const updateSessionData = () => {
-          const now = Date.now();
-          const dataPoint = {
-            timestamp: now,
-            completedTasks: timers.value.filter(t => t.completed && !t.skipped).length,
-            totalTasks: timers.value.length,
-            currentTask: currentIndex.value + 1
-          };
-
-          sessionData.value.push(dataPoint);
-
-          // Keep only last 100 data points for performance
-          if (sessionData.value.length > 100) {
-            sessionData.value.shift();
-          }
-        };
-
-        const saveSessionData = () => {
-          const sessions = JSON.parse(localStorage.getItem('mdTimerSessions') || '[]');
-          sessions.push({
-            date: new Date().toISOString(),
-            timers: timers.value.map(t => ({
-              label: t.label,
-              duration: t.duration,
-              completed: t.completed,
-              skipped: t.skipped
-            })),
-            completedCount: completedCount.value,
-            totalCount: timers.value.length,
-            efficiency: efficiency.value
-          });
-
-          // Keep last 50 sessions
-          if (sessions.length > 50) sessions.shift();
-
-          localStorage.setItem('mdTimerSessions', JSON.stringify(sessions));
-        };
-
-        // Graph
-        const toggleGraph = () => {
-          showGraph.value = !showGraph.value;
-
-          if (showGraph.value) {
-            setTimeout(() => renderGraph(), 100);
-          }
-        };
-
-        const renderGraph = () => {
-          const canvas = document.getElementById('sessionGraph');
-          if (!canvas) return;
-
-          const ctx = canvas.getContext('2d');
-
-          if (chartInstance) {
-            chartInstance.destroy();
-          }
-
-          const sessions = JSON.parse(localStorage.getItem('mdTimerSessions') || '[]');
-          const labels = sessions.map((s, i) => `S${i + 1}`);
-          const efficiencyData = sessions.map(s => s.efficiency);
-          const completionData = sessions.map(s => Math.round((s.completedCount / s.totalCount) * 100));
-
-          chartInstance = new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels: labels.length > 0 ? labels : ['No data'],
-              datasets: [
-                {
-                  label: 'Efficiency %',
-                  data: efficiencyData.length > 0 ? efficiencyData : [0],
-                  borderColor: 'rgb(59, 130, 246)',
-                  backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                  tension: 0.4,
-                  fill: true
-                },
-                {
-                  label: 'Completion %',
-                  data: completionData.length > 0 ? completionData : [0],
-                  borderColor: 'rgb(16, 185, 129)',
-                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                  tension: 0.4,
-                  fill: true
-                }
-              ]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                legend: {
-                  labels: { color: 'white' }
-                }
-              },
-              scales: {
-                y: {
-                  beginAtZero: true,
-                  max: 100,
-                  ticks: { color: 'white' },
-                  grid: { color: 'rgba(255,255,255,0.1)' }
-                },
-                x: {
-                  ticks: { color: 'white' },
-                  grid: { color: 'rgba(255,255,255,0.1)' }
-                }
-              }
-            }
-          });
-        };
-
-        // Editor controls
-        const insertTime = (timeStr) => {
-          const textarea = document.querySelector('textarea');
-          const pos = textarea?.selectionStart || timerInput.value.length;
-          const before = timerInput.value.substring(0, pos);
-          const after = timerInput.value.substring(pos);
-
-          // Add newline before if there's content before and it doesn't end with newline
-          const prefix = before && !before.endsWith('\n') ? '\n' : '';
-          // Add the time with a space for the label and newline after
-          timerInput.value = before + prefix + timeStr + ': \n' + after;
-
-          // Move cursor to after the colon and space, before the newline
-          setTimeout(() => {
-            if (textarea) {
-              const newPos = pos + prefix.length + timeStr.length + 2; // +2 for ': '
-              textarea.selectionStart = textarea.selectionEnd = newPos;
-              textarea.focus();
-            }
-          }, 0);
-
-          saveToStorage();
-        };
-
-        const toggleMode = () => {
-          isEditMode.value = !isEditMode.value;
-          if (!isEditMode.value) {
-            parseTimers();
-          }
-        };
-
-        // Drag and drop
-        const handleDragStart = (index) => {
-          draggedIndex.value = index;
-        };
-
-        const handleDrop = (targetIndex) => {
-          if (draggedIndex.value === null) return;
-
-          const items = [...timers.value];
-          const draggedItem = items[draggedIndex.value];
-          items.splice(draggedIndex.value, 1);
-          items.splice(targetIndex, 0, draggedItem);
-          timers.value = items;
-
-          // Update input
-          updateInputFromTimers();
-          draggedIndex.value = null;
-        };
-
-        const updateInputFromTimers = () => {
-          let output = [];
-          let lastRoutine = null;
-
-          timers.value.forEach(t => {
-            // Add routine header if it's different from the last one
-            if (t.routine && t.routine !== lastRoutine) {
-              output.push(`# ${t.routine}`);
-              lastRoutine = t.routine;
-            }
-
-            const unit = t.duration >= 3600 ? 'hour' : t.duration >= 60 ? 'min' : 'sec';
-            const val = t.duration >= 3600 ? t.duration / 3600 : t.duration >= 60 ? t.duration / 60 : t.duration;
-            output.push(`${val} ${unit}: ${t.label}`);
-          });
-
-          timerInput.value = output.join('\n');
-          saveToStorage();
-        };
-
-        // Storage
-        const saveToStorage = () => {
-          localStorage.setItem('mdTimerInput', timerInput.value);
-          localStorage.setItem('mdTimerTempo', tempo.value.toString());
-          localStorage.setItem('mdTimerSoundEnabled', soundEnabled.value.toString());
-          localStorage.setItem('mdTimerVibrationEnabled', vibrationEnabled.value.toString());
-          parseTimers();
-        };
-
-        const loadFromStorage = () => {
-          const saved = localStorage.getItem('mdTimerInput');
-          const savedTempo = localStorage.getItem('mdTimerTempo');
-          const savedSound = localStorage.getItem('mdTimerSoundEnabled');
-          const savedVibration = localStorage.getItem('mdTimerVibrationEnabled');
-
-          if (saved) timerInput.value = saved;
-          if (savedTempo) tempo.value = parseFloat(savedTempo);
-          if (savedSound !== null) soundEnabled.value = savedSound === 'true';
-          if (savedVibration !== null) vibrationEnabled.value = savedVibration === 'true';
-
-          parseTimers();
-        };
-
-        // Format time
-        const formatTime = (seconds) => {
-          const m = Math.floor(seconds / 60);
-          const s = seconds % 60;
-          return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-        };
-
-        // Archive sessions
-        const archiveSessions = () => {
-          const sessions = JSON.parse(localStorage.getItem('mdTimerSessions') || '[]');
-          if (sessions.length === 0) {
-            alert('No sessions to archive');
-            return;
-          }
-
-          const archive = JSON.parse(localStorage.getItem('mdTimerArchive') || '[]');
-          const archiveEntry = {
-            id: Date.now(),
-            date: new Date().toISOString(),
-            sessions: sessions,
-            sessionCount: sessions.length
-          };
-          archive.push(archiveEntry);
-
-          // Keep last 500 archives (should be well under 5MB)
-          if (archive.length > 500) archive.shift();
-
-          localStorage.setItem('mdTimerArchive', JSON.stringify(archive));
-          localStorage.removeItem('mdTimerSessions');
-
-          alert(`Archived ${sessions.length} sessions. Starting fresh!`);
-
-          // Refresh graph if open
-          if (showGraph.value) {
-            setTimeout(() => renderGraph(), 100);
-          }
-        };
-
-        const formatDate = (isoDate) => {
-          const date = new Date(isoDate);
-          const now = new Date();
-          const diffMs = now - date;
-          const diffMins = Math.floor(diffMs / 60000);
-          const diffHours = Math.floor(diffMs / 3600000);
-          const diffDays = Math.floor(diffMs / 86400000);
-
-          if (diffMins < 1) return 'Just now';
-          if (diffMins < 60) return `${diffMins}m ago`;
-          if (diffHours < 24) return `${diffHours}h ago`;
-          if (diffDays < 7) return `${diffDays}d ago`;
-
-          return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
-        };
-
-        const toggleSessionExpand = (index) => {
-          expandedSession.value = expandedSession.value === index ? null : index;
-        };
-
-        const loadArchive = (archiveId) => {
-          const archive = JSON.parse(localStorage.getItem('mdTimerArchive') || '[]');
-          const archiveEntry = archive.find(a => a.id === archiveId);
-
-          if (!archiveEntry) {
-            alert('Archive not found');
-            return;
-          }
-
-          const confirmed = confirm(`Load ${archiveEntry.sessionCount} sessions from ${formatDate(archiveEntry.date)}? This will replace current sessions.`);
-          if (!confirmed) return;
-
-          localStorage.setItem('mdTimerSessions', JSON.stringify(archiveEntry.sessions));
-          showArchive.value = false;
-
-          alert('Archive loaded successfully!');
-
-          // Refresh graph if open
-          if (showGraph.value) {
-            setTimeout(() => renderGraph(), 100);
-          }
-        };
-
-        const deleteArchive = (archiveId) => {
-          const confirmed = confirm('Delete this archive permanently?');
-          if (!confirmed) return;
-
-          const archive = JSON.parse(localStorage.getItem('mdTimerArchive') || '[]');
-          const filtered = archive.filter(a => a.id !== archiveId);
-          localStorage.setItem('mdTimerArchive', JSON.stringify(filtered));
-
-          // Reload archives to reflect deletion
-          loadArchives();
-
-          alert('Archive deleted');
-        };
-
-        const loadArchives = () => {
-          try {
-            const archive = JSON.parse(localStorage.getItem('mdTimerArchive') || '[]');
-            archivedData.value = archive.reverse();
-            showArchive.value = true;
-            showSettings.value = false;
-          } catch (error) {
-            console.error('Failed to load archives:', error);
-            alert('Failed to load archives. localStorage may be corrupted.');
-          }
-        };
-
-        // Routine Management
-        const saveRoutine = () => {
-          if (!routineName.value.trim()) {
-            alert('Please enter a routine name');
-            return;
-          }
-
-          if (timers.value.length === 0) {
-            alert('No timers to save');
-            return;
-          }
-
-          const routine = {
-            id: Date.now(),
-            name: routineName.value.trim(),
-            timers: timers.value.map(t => ({
-              label: t.label,
-              duration: t.duration
-            })),
-            created: new Date().toISOString()
-          };
-
-          const savedRoutines = JSON.parse(localStorage.getItem('mdTimerRoutines') || '[]');
-          savedRoutines.push(routine);
-          localStorage.setItem('mdTimerRoutines', JSON.stringify(savedRoutines));
-
-          routineName.value = '';
-          loadRoutines();
-        };
-
-        const loadRoutine = (routineId) => {
-          const savedRoutines = JSON.parse(localStorage.getItem('mdTimerRoutines') || '[]');
-          const routine = savedRoutines.find(r => r.id === routineId);
-
-          if (!routine) {
-            alert('Routine not found');
-            return;
-          }
-
-          // Reconstruct timer input from routine
-          timerInput.value = routine.timers.map(t => {
-            const unit = t.duration >= 3600 ? 'hour' : t.duration >= 60 ? 'min' : 'sec';
-            const val = t.duration >= 3600 ? t.duration / 3600 : t.duration >= 60 ? t.duration / 60 : t.duration;
-            return `${val} ${unit}: ${t.label}`;
-          }).join('\n');
-
-          saveToStorage();
-          showRoutines.value = false;
-        };
-
-        const deleteRoutine = (routineId) => {
-          const confirmed = confirm('Delete this routine permanently?');
-          if (!confirmed) return;
-
-          const savedRoutines = JSON.parse(localStorage.getItem('mdTimerRoutines') || '[]');
-          const filtered = savedRoutines.filter(r => r.id !== routineId);
-          localStorage.setItem('mdTimerRoutines', JSON.stringify(filtered));
-
-          loadRoutines();
-        };
-
-        const loadRoutines = () => {
-          try {
-            const savedRoutines = JSON.parse(localStorage.getItem('mdTimerRoutines') || '[]');
-            routines.value = savedRoutines.reverse();
-            showRoutines.value = true;
-            showSettings.value = false;
-          } catch (error) {
-            console.error('Failed to load routines:', error);
-            alert('Failed to load routines. localStorage may be corrupted.');
-          }
-        };
-
-        // Keyboard shortcuts
-        const handleKeyDown = (e) => {
-          if (e.target.tagName === 'TEXTAREA') return;
-
-          if (e.key === 'g' && isTimerRunning.value) {
-            e.preventDefault();
-            toggleGraph();
-          }
-
-          if (e.key === ' ' && isTimerRunning.value) {
-            e.preventDefault();
-            pauseTimer();
-          }
-
-          if (e.key === 'ArrowRight' && isTimerRunning.value) {
-            e.preventDefault();
-            skipTimer();
-          }
-
-          if (e.key === 'ArrowLeft' && isTimerRunning.value) {
-            e.preventDefault();
-            previousTimer();
-          }
-        };
-
-        // PWA Functions
-
-        // Service Worker Registration
-        const registerServiceWorker = async () => {
-          if ('serviceWorker' in navigator) {
-            try {
-              const registration = await navigator.serviceWorker.register('/sw.js');
-              console.log('Service Worker registered:', registration);
-            } catch (error) {
-              console.error('Service Worker registration failed:', error);
-            }
-          }
-        };
-
-        // Wake Lock API - Keep screen awake
-        const requestWakeLock = async () => {
-          if ('wakeLock' in navigator) {
-            try {
-              wakeLock = await navigator.wakeLock.request('screen');
-              console.log('Wake Lock acquired');
-
-              wakeLock.addEventListener('release', () => {
-                console.log('Wake Lock released');
-              });
-            } catch (error) {
-              console.error('Wake Lock request failed:', error);
-            }
-          }
-        };
-
-        const releaseWakeLock = () => {
-          if (wakeLock !== null) {
-            wakeLock.release();
-            wakeLock = null;
-          }
-        };
-
-        // Notification API
-        const requestNotificationPermission = async () => {
-          if ('Notification' in window) {
-            const permission = await Notification.requestPermission();
-            notificationPermission.value = permission;
-            return permission === 'granted';
-          }
-          return false;
-        };
-
-        const showNotification = (title, body) => {
-          if (notificationPermission.value === 'granted' && 'Notification' in window) {
-            const notification = new Notification(title, {
-              body: body,
-              icon: '/icons/icon-192.png',
-              badge: '/icons/icon-96.png',
-              tag: 'md-timer-task',
-              requireInteraction: false,
-              silent: false
-            });
-
-            notification.onclick = () => {
-              window.focus();
-              notification.close();
-            };
-          }
-        };
-
-        // Sound Notification
-        const initAudio = () => {
-          // Create HTML5 Audio element with notification.mp3 file
-          notificationSound = new Audio('/notification.mp3');
-          notificationSound.volume = 0.7;
-          notificationSound.preload = 'auto';
-
-          console.log('Audio initialized with notification.mp3');
-        };
-
-        const playNotificationSound = () => {
-          if (!soundEnabled.value) return;
-
-          // Initialize audio if not already done
-          if (!notificationSound) {
-            try {
-              initAudio();
-            } catch (error) {
-              console.error('Audio init failed:', error);
-              return;
-            }
-          }
-
-          // Play the notification sound
-          try {
-            notificationSound.currentTime = 0; // Reset to start
-            const playPromise = notificationSound.play();
-
-            if (playPromise !== undefined) {
-              playPromise.then(() => {
-                console.log('Notification sound played successfully');
-              }).catch(error => {
-                console.error('Audio playback failed:', error);
-              });
-            }
-          } catch (error) {
-            console.error('Audio playback error:', error);
-          }
-        };
-
-        // Vibration API
-        const vibrate = (pattern = [200, 100, 200]) => {
-          if (!vibrationEnabled.value) return;
-          if ('vibrate' in navigator) {
-            navigator.vibrate(pattern);
-          }
-        };
-
-        // Badge API - Show task count on icon
-        const updateBadge = () => {
-          if ('setAppBadge' in navigator) {
-            const remaining = timers.value.length - completedCount.value;
-            if (remaining > 0 && isTimerRunning.value) {
-              navigator.setAppBadge(remaining);
-            } else {
-              navigator.clearAppBadge();
-            }
-          }
-        };
-
-        // Media Session API - Control from lock screen
-        const updateMediaSession = () => {
-          if ('mediaSession' in navigator && currentTimer.value) {
-            navigator.mediaSession.metadata = new MediaMetadata({
-              title: currentTimer.value.label,
-              artist: 'MD-Timer',
-              album: currentTimer.value.routine || 'Task Timer',
-              artwork: [
-                { src: '/icons/icon-96.png', sizes: '96x96', type: 'image/png' },
-                { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-                { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' }
-              ]
-            });
-
-            navigator.mediaSession.setActionHandler('play', () => {
-              if (isPaused.value) pauseTimer();
-            });
-
-            navigator.mediaSession.setActionHandler('pause', () => {
-              if (!isPaused.value) pauseTimer();
-            });
-
-            navigator.mediaSession.setActionHandler('previoustrack', () => {
-              if (currentIndex.value > 0) previousTimer();
-            });
-
-            navigator.mediaSession.setActionHandler('nexttrack', () => {
-              if (currentIndex.value < timers.value.length - 1) skipTimer();
-            });
-          }
-        };
-
-        // Install Prompt Handler
-        const handleInstallPrompt = () => {
-          if (deferredPrompt) {
-            deferredPrompt.prompt();
-            deferredPrompt.userChoice.then((choiceResult) => {
-              if (choiceResult.outcome === 'accepted') {
-                console.log('App installed');
-              }
-              deferredPrompt = null;
-              showInstallPrompt.value = false;
-            });
-          }
-        };
-
-        const dismissInstallPrompt = () => {
-          showInstallPrompt.value = false;
-          localStorage.setItem('installPromptDismissed', 'true');
-        };
-
-        // Lifecycle
-        onMounted(() => {
-          loadFromStorage();
-          window.addEventListener('keydown', handleKeyDown);
-
-          // Initialize PWA
-          registerServiceWorker();
-
-          // Check notification permission
-          if ('Notification' in window) {
-            notificationPermission.value = Notification.permission;
-          }
-
-          // Install prompt event
-          window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            const dismissed = localStorage.getItem('installPromptDismissed');
-            if (!dismissed) {
-              showInstallPrompt.value = true;
-            }
-          });
-
-          // Detect if app was installed
-          window.addEventListener('appinstalled', () => {
-            console.log('App was installed');
-            showInstallPrompt.value = false;
-          });
-
-          // Handle URL shortcuts
-          const urlParams = new URLSearchParams(window.location.search);
-          if (urlParams.get('action') === 'start' && timers.value.length > 0) {
-            startTimer();
-          } else if (urlParams.get('action') === 'routines') {
-            loadRoutines();
-          }
-
-          // Initialize audio context on first user interaction
-          document.addEventListener('click', () => {
-            if (!audioContext) {
-              try {
-                initAudio();
-              } catch (e) {
-                console.log('Audio context init deferred');
-              }
-            }
-          }, { once: true });
-        });
-
-        watch(tempo, () => {
-          saveToStorage();
-        });
-
-        return {
-          // State
-          timerInput,
-          timers,
-          isEditMode,
-          isTimerRunning,
-          currentIndex,
-          currentTimer,
-          isPaused,
-          isMinimized,
-          showScore,
-          showSettings,
-          showGraph,
-          tempo,
-          tempoLabel,
-          expandedSession,
-          showArchive,
-          showRoutines,
-          routines,
-          routineName,
-          soundEnabled,
-          vibrationEnabled,
-
-          // Computed
-          totalTime,
-          targetTime,
-          completedCount,
-          skippedCount,
-          efficiency,
-          completedSkippedCount,
-          notCompletedCount,
-
-          // Methods
-          formatTime,
-          formatDate,
-          parseTimers,
-          startTimer,
-          pauseTimer,
-          skipTimer,
-          previousTimer,
-          stopTimer,
-          minimizeTimer,
-          restoreTimer,
-          toggleGraph,
-          insertTime,
-          toggleMode,
-          handleDragStart,
-          handleDrop,
-          saveToStorage,
-          archiveSessions,
-          toggleSessionExpand,
-          loadArchive,
-          deleteArchive,
-          saveRoutine,
-          loadRoutine,
-          deleteRoutine,
-          loadRoutines
-        };
-      },
-
-      template: `
-        <div class="min-h-screen p-4 pb-24">
-          <!-- Header -->
-          <div class="fixed top-0 left-0 right-0 bg-gray-800 backdrop-blur-sm z-40 border-b border-gray-700">
-            <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent">
-                  MD-Timer
-                </h1>
-                <span class="text-xs text-gray-400 hidden sm:inline">{{ tempoLabel }}</span>
-              </div>
-
-              <button
-                @click="showSettings = !showSettings"
-                class="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition text-sm font-medium"
-              >
-                Settings <i class="fas fa-bars"></i>
-              </button>
-            </div>
-          </div>
-
-          <!-- Main Content -->
-          <div class="max-w-4xl mx-auto mt-20">
-            <!-- Editor Section -->
-            <div class="bg-gray-800 rounded-xl p-4 sm:p-6 mb-6">
-              <!-- Editor Controls -->
-              <div class="flex flex-wrap gap-2 mb-4">
-                <button
-                  @click="toggleMode"
-                  :class="['px-3 py-1.5 rounded-lg text-sm font-medium transition',
-                    isEditMode ? 'bg-green-500 text-white' : 'bg-gray-700 text-gray-300']"
-                >
-                  <i :class="isEditMode ? 'fas fa-edit' : 'fas fa-grip-vertical'"></i>
-                  {{ isEditMode ? 'Edit' : 'Arrange' }}
-                </button>
-
-                <template v-if="!isEditMode">
-                  <button
-                    @click="loadRoutines"
-                    class="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm font-medium transition"
-                  >
-                    <i class="fas fa-layer-group mr-1"></i>Routines
-                  </button>
-                </template>
-
-                <template v-if="isEditMode">
-                  <!-- Seconds -->
-                  <button @click="insertTime('30 sec')" class="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 rounded-lg text-sm">
-                    +30s
-                  </button>
-                  <button @click="insertTime('45 sec')" class="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 rounded-lg text-sm">
-                    +45s
-                  </button>
-                  <!-- Minutes (short intervals) -->
-                  <button @click="insertTime('1 min')" class="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 rounded-lg text-sm">
-                    +1m
-                  </button>
-                  <button @click="insertTime('2 min')" class="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 rounded-lg text-sm">
-                    +2m
-                  </button>
-                  <button @click="insertTime('3 min')" class="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 rounded-lg text-sm">
-                    +3m
-                  </button>
-                  <button @click="insertTime('4 min')" class="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 rounded-lg text-sm">
-                    +4m
-                  </button>
-                  <button @click="insertTime('5 min')" class="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 rounded-lg text-sm">
-                    +5m
-                  </button>
-                  <button @click="insertTime('6 min')" class="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 rounded-lg text-sm">
-                    +6m
-                  </button>
-                  <button @click="insertTime('7 min')" class="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 rounded-lg text-sm">
-                    +7m
-                  </button>
-
-                  <!-- Minutes (longer intervals) -->
-                  <button @click="insertTime('10 min')" class="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm">
-                    +10m
-                  </button>
-                  <button @click="insertTime('15 min')" class="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm">
-                    +15m
-                  </button>
-                  <button @click="insertTime('20 min')" class="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm">
-                    +20m
-                  </button>
-                  <button @click="insertTime('25 min')" class="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm">
-                    +25m
-                  </button>
-                  <button @click="insertTime('30 min')" class="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm">
-                    +30m
-                  </button>
-                </template>
-              </div>
-
-              <!-- Edit Mode: Textarea -->
-              <textarea
-                v-if="isEditMode"
-                v-model="timerInput"
-                @input="saveToStorage"
-                class="w-full h-64 sm:h-80 p-4 bg-gray-900 text-white rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                placeholder="# Morning&#10;30 sec: Break&#10;5 min: Deep work&#10;&#10;# Afternoon&#10;1 hour: Project time"
-              ></textarea>
-
-              <!-- Arrange Mode: Draggable List -->
-              <div v-else class="space-y-2">
-                <template v-for="(timer, index) in timers" :key="timer.id">
-                  <!-- Routine Title Separator -->
-                  <div
-                    v-if="index === 0 && timer.routine || (index > 0 && timers[index - 1].routine !== timer.routine && timer.routine)"
-                    class="flex items-center gap-2 pt-4 pb-2"
-                    :class="{'pt-0': index === 0}"
-                  >
-                    <i class="fas fa-hashtag text-purple-400"></i>
-                    <span class="text-lg font-bold text-purple-400">{{ timer.routine }}</span>
-                  </div>
-
-                  <!-- Timer Item -->
-                  <div
-                    draggable="true"
-                    @dragstart="handleDragStart(index)"
-                    @dragover.prevent
-                    @drop="handleDrop(index)"
-                    class="task-item flex items-center justify-between p-3 bg-gray-900 rounded-lg"
-                  >
-                    <div class="flex items-center gap-3 flex-1 min-w-0">
-                      <i class="fas fa-grip-vertical text-gray-600"></i>
-                      <span class="truncate" :title="timer.label">{{ timer.label }}</span>
-                    </div>
-                    <span class="text-gray-400 text-sm ml-2">{{ formatTime(timer.duration) }}</span>
-                  </div>
-                </template>
-                <p v-if="timers.length === 0" class="text-center text-gray-500 py-8">
-                  Switch to Edit mode to add timers
-                </p>
-              </div>
-
-              <!-- Summary -->
-              <div class="mt-4 pt-4 border-t border-gray-700 flex flex-wrap gap-4 text-sm">
-                <div>
-                  <span class="text-gray-400">Tasks:</span>
-                  <span class="font-semibold ml-1">{{ timers.length }}</span>
-                </div>
-                <div>
-                  <span class="text-gray-400">Total:</span>
-                  <span class="font-semibold ml-1">{{ formatTime(totalTime) }}</span>
-                </div>
-                <div>
-                  <span class="text-gray-400">Target:</span>
-                  <span class="font-semibold ml-1">{{ targetTime }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Install Prompt -->
-          <div
-            v-if="showInstallPrompt"
-            class="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-24 sm:w-96 bg-gradient-to-r from-blue-600 to-green-600 text-white rounded-xl p-4 shadow-2xl z-50 animate-slide-up"
-          >
-            <button
-              @click="dismissInstallPrompt"
-              class="absolute top-2 right-2 text-white hover:text-gray-200"
-            >
-              <i class="fas fa-times"></i>
-            </button>
-            <div class="flex items-start gap-3">
-              <i class="fas fa-download text-2xl mt-1"></i>
-              <div>
-                <h3 class="font-bold text-lg mb-1">Install MD-Timer</h3>
-                <p class="text-sm mb-3 opacity-90">Install as an app for offline access, notifications, and keep screen awake!</p>
-                <button
-                  @click="handleInstallPrompt"
-                  class="px-4 py-2 bg-white text-blue-600 rounded-lg font-semibold hover:bg-gray-100 transition"
-                >
-                  Install Now
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Floating Start Button -->
-          <button
-            v-if="!isTimerRunning && timers.length > 0"
-            @click="startTimer"
-            class="floating-btn px-8 py-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-full text-xl font-bold transition transform hover:scale-105"
-          >
-            <i class="fas fa-play mr-2"></i> Start
-          </button>
-
-          <!-- Timer Display -->
-          <div
-            v-if="isTimerRunning && !isMinimized"
-            class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            @click="minimizeTimer"
-          >
-            <div
-              class="bg-gray-800 rounded-2xl p-6 sm:p-10 max-w-3xl w-full"
-              @click.stop
-            >
-              <h2 class="text-2xl sm:text-4xl font-bold mb-4 text-center truncate" :title="currentTimer?.label">
-                {{ currentTimer?.label }}
-              </h2>
-
-              <div class="text-6xl sm:text-8xl font-bold text-center mb-6 tabular-nums">
-                {{ formatTime(currentTimer?.remaining || 0) }}
-              </div>
-
-              <div class="text-center text-gray-400 mb-2 flex items-center justify-center gap-2">
-                <span>Task {{ currentIndex + 1 }} of {{ timers.length }}</span>
-                <template v-if="currentTimer?.routine">
-                  <span class="text-gray-600">•</span>
-                  <i class="fas fa-hashtag text-purple-400 text-sm"></i>
-                  <span class="text-purple-400 font-semibold">{{ currentTimer.routine }}</span>
-                </template>
-              </div>
-
-<!-- Stats Bar -->
-              <div class="text-center text-gray-400 mb-8 text-sm flex items-center justify-center gap-4">
-                <div>
-                  <span class="font-medium">Total:</span>
-                  <span class="ml-1">{{ formatTime(totalTime) }}</span>
-                </div>
-                <div>
-                  <span class="font-medium">Target:</span>
-                  <span class="ml-1">{{ targetTime }}</span>
-                </div>
-              </div>
-
-              <!-- Timer Controls -->
-              <div class="flex flex-wrap justify-center gap-3 mb-4">
-                <button
-                  v-if="currentIndex > 0"
-                  @click="previousTimer"
-                  class="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg font-medium transition"
-                >
-                  <i class="fas fa-backward mr-2"></i>Back
-                </button>
-
-                <button
-                  @click="pauseTimer"
-                  class="px-6 py-3 bg-yellow-500 hover:bg-yellow-600 rounded-lg font-bold transition text-lg"
-                >
-                  <i :class="isPaused ? 'fas fa-play' : 'fas fa-pause'" class="mr-2"></i>
-                  {{ isPaused ? 'Resume' : 'Pause' }}
-                </button>
-
-                <button
-                  v-if="currentIndex < timers.length - 1"
-                  @click="skipTimer(true)"
-                  class="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg font-medium transition flex items-center gap-2"
-                >
-                  <span class="font-bold">Y</span>
-                  <span>Skip</span>
-                </button>
-
-                <button
-                  v-if="currentIndex < timers.length - 1"
-                  @click="skipTimer(false)"
-                  class="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg font-medium transition flex items-center gap-2"
-                >
-                  <span class="font-bold">N</span>
-                  <span>Skip</span>
-                </button>
-              </div>
-
-              <!-- Secondary Controls -->
-              <div class="flex flex-wrap justify-center gap-2">
-                <button
-                  @click="toggleGraph"
-                  class="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm font-medium transition"
-                >
-                  <i class="fas fa-chart-line mr-1"></i>Graph (G)
-                </button>
-                <button
-                  @click="stopTimer"
-                  class="px-3 py-1.5 bg-red-500 hover:bg-red-600 rounded-lg text-sm font-medium transition"
-                >
-                  <i class="fas fa-stop mr-1"></i>Stop
-                </button>
-              </div>
-            </div>
-          </div>
-
-<button
-  v-if="currentIndex < timers.length - 1"
-  @click="skipTimer(true)"
-  class="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg font-medium transition flex items-center gap-2"
->
-  <span class="font-bold">Y</span>
-  <span>Skip</span>
-</button>
-
-<button
-  v-if="currentIndex < timers.length - 1"
-  @click="skipTimer(false)"
-  class="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg font-medium transition flex items-center gap-2"
->
-  <span class="font-bold">N</span>
-  <span>Skip</span>
-</button>
-
-                <button
-                  @click="pauseTimer"
-                  class="px-6 py-3 bg-yellow-500 hover:bg-yellow-600 rounded-lg font-bold transition text-lg"
-                >
-                  <i :class="isPaused ? 'fas fa-play' : 'fas fa-pause'" class="mr-2"></i>
-                  {{ isPaused ? 'Resume' : 'Pause' }}
-                </button>
-
-                <button
-                  v-if="currentIndex < timers.length - 1"
-                  @click="skipTimer"
-                  class="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg font-medium transition"
-                >
-                  Skip<i class="fas fa-forward ml-2"></i>
-                </button>
-              </div>
-
-              <!-- Secondary Controls -->
-              <div class="flex flex-wrap justify-center gap-2">
-                <button
-                  @click="toggleGraph"
-                  class="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm font-medium transition"
-                >
-                  <i class="fas fa-chart-line mr-1"></i>Graph (G)
-                </button>
-                <button
-                  @click="stopTimer"
-                  class="px-3 py-1.5 bg-red-500 hover:bg-red-600 rounded-lg text-sm font-medium transition"
-                >
-                  <i class="fas fa-stop mr-1"></i>Stop
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Minimized Timer -->
-          <div
-            v-if="isTimerRunning && isMinimized"
-            @click="restoreTimer"
-            class="minimized-timer bg-gray-800 px-4 py-3 rounded-xl shadow-2xl border border-gray-700"
-          >
-            <div class="flex items-center gap-3">
-              <i :class="isPaused ? 'fas fa-pause' : 'fas fa-play'" class="text-green-400"></i>
-              <span class="font-bold text-lg">{{ formatTime(currentTimer?.remaining || 0) }}</span>
-              <span class="text-xs text-gray-400 hidden sm:inline">{{ currentTimer?.label?.substring(0, 15) }}...</span>
-            </div>
-          </div>
-
-          <!-- Graph Modal -->
-          <div
-            v-if="showGraph"
-            class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            @click="showGraph = false"
-          >
-            <div
-              class="bg-gray-800 rounded-2xl p-6 max-w-4xl w-full max-h-[80vh] overflow-y-auto"
-              @click.stop
-            >
-              <div class="flex justify-between items-center mb-4">
-                <h3 class="text-2xl font-bold">Session Analytics</h3>
-                <button @click="showGraph = false" class="text-gray-400 hover:text-white">
-                  <i class="fas fa-times text-xl"></i>
-                </button>
-              </div>
-
-              <div class="h-64 sm:h-96">
-                <canvas id="sessionGraph"></canvas>
-              </div>
-            </div>
-          </div>
-
-        <div class="grid grid-cols-2 gap-4 mb-6">
-  <div class="bg-gray-900 p-4 rounded-xl text-center">
-    <div class="text-3xl font-bold text-green-400">{{ completedCount }}</div>
-    <div class="text-sm text-gray-400 mt-1">Fully Completed</div>
-  </div>
-  <div class="bg-gray-900 p-4 rounded-xl text-center">
-    <div class="text-3xl font-bold text-emerald-400">{{ completedSkippedCount }}</div>
-    <div class="text-sm text-gray-400 mt-1">Skip Y (Did it)</div>
-  </div>
-  <div class="bg-gray-900 p-4 rounded-xl text-center">
-    <div class="text-3xl font-bold text-red-400">{{ notCompletedCount }}</div>
-    <div class="text-sm text-gray-400 mt-1">Skip N (Didn't do)</div>
-  </div>
-  <div class="bg-gray-900 p-4 rounded-xl text-center">
-    <div class="text-3xl font-bold text-blue-400">{{ efficiency }}%</div>
-    <div class="text-sm text-gray-400 mt-1">Efficiency</div>
-  </div>
-</div>
-
-          <!-- Settings Modal -->
-          <div
-            v-if="showSettings"
-            class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            @click="showSettings = false"
-          >
-            <div
-              class="bg-gray-800 rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto"
-              @click.stop
-            >
-              <div class="flex justify-between items-center mb-6">
-                <h3 class="text-2xl font-bold">Settings</h3>
-                <button @click="showSettings = false" class="text-gray-400 hover:text-white">
-                  <i class="fas fa-times text-xl"></i>
-                </button>
-              </div>
-
-              <!-- Tempo Settings -->
-              <div class="mb-6">
-                <h4 class="text-lg font-semibold mb-3 flex items-center gap-2">
-                  <i class="fas fa-tachometer-alt"></i>
-                  Schedule Tempo
-                </h4>
-                <p class="text-sm text-gray-400 mb-3">Adjust task durations</p>
-
-                <div class="space-y-2">
-                  <label
-                    class="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition"
-                    :class="tempo === 0.8 ? 'bg-green-600' : 'bg-gray-700 hover:bg-gray-600'"
-                  >
-                    <input type="radio" :value="0.8" v-model="tempo" class="w-4 h-4">
-                    <span><i class="fas fa-running mr-2"></i>Fast (80%)</span>
-                  </label>
-
-                  <label
-                    class="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition"
-                    :class="tempo === 1.0 ? 'bg-green-600' : 'bg-gray-700 hover:bg-gray-600'"
-                  >
-                    <input type="radio" :value="1.0" v-model="tempo" class="w-4 h-4">
-                    <span><i class="fas fa-walking mr-2"></i>Standard (100%)</span>
-                  </label>
-
-                  <label
-                    class="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition"
-                    :class="tempo === 1.2 ? 'bg-green-600' : 'bg-gray-700 hover:bg-gray-600'"
-                  >
-                    <input type="radio" :value="1.2" v-model="tempo" class="w-4 h-4">
-                    <span><i class="fas fa-hiking mr-2"></i>Slow (120%)</span>
-                  </label>
-                </div>
-              </div>
-
-              <!-- Notifications Settings -->
-              <div class="mb-6">
-                <h4 class="text-lg font-semibold mb-3 flex items-center gap-2">
-                  <i class="fas fa-bell"></i>
-                  Notifications
-                </h4>
-                <p class="text-sm text-gray-400 mb-3">Control sound and vibration alerts</p>
-
-                <div class="space-y-2">
-                  <label
-                    class="flex items-center justify-between p-3 rounded-lg cursor-pointer transition"
-                    :class="soundEnabled ? 'bg-green-600' : 'bg-gray-700 hover:bg-gray-600'"
-                  >
-                    <div class="flex items-center gap-3">
-                      <i class="fas fa-volume-up"></i>
-                      <span>Sound Alerts</span>
-                    </div>
-                    <input
-                      type="checkbox"
-                      v-model="soundEnabled"
-                      @change="saveToStorage"
-                      class="w-5 h-5"
-                    >
-                  </label>
-
-                  <label
-                    class="flex items-center justify-between p-3 rounded-lg cursor-pointer transition"
-                    :class="vibrationEnabled ? 'bg-green-600' : 'bg-gray-700 hover:bg-gray-600'"
-                  >
-                    <div class="flex items-center gap-3">
-                      <i class="fas fa-mobile-alt"></i>
-                      <span>Vibration (Mobile)</span>
-                    </div>
-                    <input
-                      type="checkbox"
-                      v-model="vibrationEnabled"
-                      @change="saveToStorage"
-                      class="w-5 h-5"
-                    >
-                  </label>
-                </div>
-              </div>
-
-              <!-- Session Management -->
-              <div class="mb-6">
-                <h4 class="text-lg font-semibold mb-3 flex items-center gap-2">
-                  <i class="fas fa-archive"></i>
-                  Session Management
-                </h4>
-                <p class="text-sm text-gray-400 mb-3">Archive current sessions and start fresh</p>
-                <div class="space-y-2">
-                  <button
-                    @click="archiveSessions"
-                    class="w-full px-4 py-3 bg-orange-500 hover:bg-orange-600 rounded-lg font-medium transition"
-                  >
-                    <i class="fas fa-archive mr-2"></i>Archive Sessions
-                  </button>
-                  <button
-                    @click="loadArchives()"
-                    class="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg font-medium transition"
-                  >
-                    <i class="fas fa-folder-open mr-2"></i>View Archives
-                  </button>
-                </div>
-              </div>
-
-              <!-- Keyboard Shortcuts -->
-              <div>
-                <h4 class="text-lg font-semibold mb-3 flex items-center gap-2">
-                  <i class="fas fa-keyboard"></i>
-                  Keyboard Shortcuts
-                </h4>
-                <div class="space-y-2 text-sm">
-                  <div class="flex justify-between">
-                    <span class="text-gray-400">Pause/Resume</span>
-                    <kbd class="px-2 py-1 bg-gray-700 rounded">Space</kbd>
-                  </div>
-                  <div class="flex justify-between">
-                    <span class="text-gray-400">Skip task</span>
-                    <kbd class="px-2 py-1 bg-gray-700 rounded">→</kbd>
-                  </div>
-                  <div class="flex justify-between">
-                    <span class="text-gray-400">Previous task</span>
-                    <kbd class="px-2 py-1 bg-gray-700 rounded">←</kbd>
-                  </div>
-                  <div class="flex justify-between">
-                    <span class="text-gray-400">Toggle graph</span>
-                    <kbd class="px-2 py-1 bg-gray-700 rounded">G</kbd>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Archive Modal -->
-          <div
-            v-if="showArchive"
-            class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            @click="showArchive = false"
-          >
-            <div
-              class="bg-gray-800 rounded-2xl p-6 max-w-4xl w-full max-h-[80vh] overflow-y-auto"
-              @click.stop
-            >
-              <div class="flex justify-between items-center mb-4">
-                <h3 class="text-2xl font-bold">Archived Sessions</h3>
-                <button @click="showArchive = false" class="text-gray-400 hover:text-white">
-                  <i class="fas fa-times text-xl"></i>
-                </button>
-              </div>
-
-              <div class="space-y-2">
-                <div
-                  v-for="archive in archivedData"
-                  :key="archive.id"
-                  class="bg-gray-900 rounded-lg p-4"
-                >
-                  <div class="flex items-center justify-between mb-2">
-                    <div>
-                      <div class="font-semibold">{{ formatDate(archive.date) }}</div>
-                      <div class="text-sm text-gray-400">{{ archive.sessionCount }} sessions</div>
-                    </div>
-                    <div class="flex gap-2">
-                      <button
-                        @click="loadArchive(archive.id)"
-                        class="px-3 py-1.5 bg-green-500 hover:bg-green-600 rounded-lg text-sm font-medium transition"
-                      >
-                        <i class="fas fa-download mr-1"></i>Load
-                      </button>
-                      <button
-                        @click="deleteArchive(archive.id)"
-                        class="px-3 py-1.5 bg-red-500 hover:bg-red-600 rounded-lg text-sm font-medium transition"
-                      >
-                        <i class="fas fa-trash mr-1"></i>Delete
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- Show efficiency stats -->
-                  <div class="flex gap-4 text-xs text-gray-400 mt-2">
-                    <span>Total: {{ archive.sessions.reduce((sum, s) => sum + s.totalCount, 0) }} tasks</span>
-                    <span>Avg Efficiency: {{ Math.round(archive.sessions.reduce((sum, s) => sum + s.efficiency, 0) / archive.sessions.length) }}%</span>
-                  </div>
-                </div>
-
-                <p v-if="archivedData.length === 0" class="text-center text-gray-500 py-8">
-                  No archives yet. Archive your current sessions to save them for later.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Routines Modal -->
-          <div
-            v-if="showRoutines"
-            class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            @click="showRoutines = false"
-          >
-            <div
-              class="bg-gray-800 rounded-2xl p-6 max-w-4xl w-full max-h-[80vh] overflow-y-auto"
-              @click.stop
-            >
-              <div class="flex justify-between items-center mb-4">
-                <h3 class="text-2xl font-bold">Saved Routines</h3>
-                <button @click="showRoutines = false" class="text-gray-400 hover:text-white">
-                  <i class="fas fa-times text-xl"></i>
-                </button>
-              </div>
-
-              <!-- Save Current Routine -->
-              <div class="bg-gray-900 rounded-lg p-4 mb-4">
-                <h4 class="text-lg font-semibold mb-3 flex items-center gap-2">
-                  <i class="fas fa-save"></i>
-                  Save Current Timers as Routine
-                </h4>
-                <div class="flex gap-2">
-                  <input
-                    v-model="routineName"
-                    type="text"
-                    placeholder="Enter routine name..."
-                    class="flex-1 px-4 py-2 bg-gray-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    @keyup.enter="saveRoutine"
-                  />
-                  <button
-                    @click="saveRoutine"
-                    class="px-6 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg font-medium transition"
-                  >
-                    <i class="fas fa-save mr-2"></i>Save
-                  </button>
-                </div>
-                <p class="text-xs text-gray-400 mt-2">
-                  Current timers ({{ timers.length }}): {{ timers.map(t => t.label).join(', ').substring(0, 60) }}{{ timers.length > 0 && timers.map(t => t.label).join(', ').length > 60 ? '...' : '' }}
-                </p>
-              </div>
-
-              <!-- Saved Routines List -->
-              <div class="space-y-2">
-                <div
-                  v-for="routine in routines"
-                  :key="routine.id"
-                  class="bg-gray-900 rounded-lg p-4"
-                >
-                  <div class="flex items-center justify-between mb-2">
-                    <div class="flex-1 min-w-0">
-                      <div class="font-semibold text-lg flex items-center gap-2">
-                        <i class="fas fa-layer-group text-purple-400"></i>
-                        {{ routine.name }}
-                      </div>
-                      <div class="text-sm text-gray-400">
-                        {{ routine.timers.length }} timers · Created {{ formatDate(routine.created) }}
-                      </div>
-                    </div>
-                    <div class="flex gap-2 ml-4">
-                      <button
-                        @click="loadRoutine(routine.id)"
-                        class="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg text-sm font-medium transition"
-                      >
-                        <i class="fas fa-download mr-1"></i>Load
-                      </button>
-                      <button
-                        @click="deleteRoutine(routine.id)"
-                        class="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg text-sm font-medium transition"
-                      >
-                        <i class="fas fa-trash mr-1"></i>Delete
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- Show routine timers -->
-                  <div class="mt-3 space-y-1">
-                    <div
-                      v-for="(timer, idx) in routine.timers"
-                      :key="idx"
-                      class="text-xs text-gray-400 flex items-center gap-2 pl-6"
-                    >
-                      <i class="fas fa-clock"></i>
-                      <span class="flex-1 truncate">{{ timer.label }}</span>
-                      <span class="text-gray-500">{{ formatTime(timer.duration) }}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <p v-if="routines.length === 0" class="text-center text-gray-500 py-8">
-                  No routines saved yet. Save your current timers as a routine to reuse them later!
-                </p>
-              </div>
-            </div>
+<body>
+  <div class="container">
+    <h1>MD-Timer Mini</h1>
+
+    <div id="editor">
+      <div class="card">
+        <div class="btn-group">
+          <button class="b1" onclick="app.ins('1 min')">+1m</button>
+          <button class="b1" onclick="app.ins('5 min')">+5m</button>
+          <button class="b2" onclick="app.ins('10 min')">+10m</button>
+          <button class="b2" onclick="app.ins('25 min')">+25m</button>
+        </div>
+        <textarea id="inp" placeholder="# Morning&#10;5 min: Deep work&#10;1 min: Break&#10;&#10;# Afternoon&#10;25 min: Pomodoro"></textarea>
+        <div class="info">Tasks: <span id="cnt">0</span> • Total: <span id="totalTime">0:00</span> • Target: <span id="target">--:--</span></div>
+        <div id="taskHoverLabel" style="min-height:1.5rem;font-size:.875rem;color:#60a5fa;margin-top:.5rem;text-align:center;font-weight:600"></div>
+        <div class="tasks" id="taskList"></div>
+      </div>
+      <div class="flex gap">
+        <button class="b3" onclick="app.start()" id="start">Start</button>
+        <button class="b6" onclick="app.graph()">Graph</button>
+        <button class="b6" onclick="app.settings()">Settings</button>
+      </div>
+      <div class="flex gap" style="margin-top:.5rem">
+        <button class="b1" onclick="app.exportQR()" style="flex:1">📤 Export QR</button>
+        <button class="b2" onclick="app.importQR()" style="flex:1">📥 Scan QR</button>
+      </div>
+    </div>
+
+    <div id="timer" class="hidden">
+      <div class="card timer">
+        <h2 id="lbl"></h2>
+        <div id="routineBadge" class="hidden" style="text-align:center;margin-bottom:.5rem">
+          <span class="routine-badge">
+            <span style="font-size:.8rem">#</span>
+            <span id="routineName"></span>
+          </span>
+        </div>
+        <div class="time" id="tm">00:00</div>
+        <div class="center">Task <span id="idx">1</span> of <span id="tot">1</span></div>
+        <div class="flex gap" style="justify-content:center;margin-bottom:1rem">
+          <button class="b1" onclick="app.previousTask()" id="backBtn" style="padding:.75rem 1rem;font-size:.875rem">← Back</button>
+          <button class="b4" onclick="app.pause()" id="pBtn">Pause</button>
+          <button class="b3" onclick="app.skipDone()" style="padding:.75rem 1rem;font-size:.875rem">Done✓</button>
+          <button class="b1" onclick="app.skip()" style="padding:.75rem 1rem;font-size:.875rem">Skip</button>
+          <button class="b5" onclick="app.stop()">Stop</button>
+        </div>
+        <div id="runTaskHoverLabel" style="min-height:1.5rem;font-size:.875rem;color:#60a5fa;margin-bottom:.5rem;text-align:center;font-weight:600"></div>
+        <div class="tasks" id="runList"></div>
+      </div>
+      <div class="stats">
+        <div class="stat">
+          <div class="val green" id="comp">0</div>
+          <div class="lbl">Completed</div>
+        </div>
+        <div class="stat">
+          <div class="val blue" id="eff">0%</div>
+          <div class="lbl">Efficiency</div>
+        </div>
+        <div class="stat">
+          <div class="val" id="targetTime" style="color:#a78bfa">--:--</div>
+          <div class="lbl">Finish At</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="gModal" class="modal hidden" onclick="app.closeModal(event,'gModal')">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Analytics</h3>
+          <button class="close" onclick="app.closeModal(null,'gModal')">✕</button>
+        </div>
+        <div class="chart"><canvas id="ch"></canvas></div>
+        <div class="chart" style="margin-top:1rem"><canvas id="ch2"></canvas></div>
+        <div id="sessions" style="margin-top:1rem"></div>
+      </div>
+    </div>
+
+    <div id="qrModal" class="modal hidden" onclick="app.closeModal(event,'qrModal')">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Export Tasks</h3>
+          <button class="close" onclick="app.closeModal(null,'qrModal')">✕</button>
+        </div>
+        <div id="qrDisplay">
+          <div id="qrCanvas"></div>
+          <p style="color:#9ca3af;margin-top:1rem">Scan this QR code on another device to import these tasks</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="scanModal" class="modal hidden" onclick="app.closeScan(event)">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Scan QR Code</h3>
+          <button class="close" onclick="app.closeScan()">✕</button>
+        </div>
+        <div style="text-align:center">
+          <video id="scanVideo" autoplay playsinline></video>
+          <div id="scanStatus">Position QR code in camera view...</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="settingsModal" class="modal hidden" onclick="app.closeModal(event,'settingsModal')">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Settings</h3>
+          <button class="close" onclick="app.closeModal(null,'settingsModal')">✕</button>
+        </div>
+        <div style="padding:1rem 0">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:.75rem;background:#111;border-radius:.5rem;margin-bottom:.5rem">
+            <span style="font-size:.875rem;font-weight:600">Vibration</span>
+            <label style="position:relative;display:inline-block;width:3rem;height:1.5rem">
+              <input type="checkbox" id="vibToggle" onchange="app.toggleVib()" style="opacity:0;width:0;height:0">
+              <span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#374151;border-radius:1.5rem;transition:.3s" id="vibSlider"></span>
+            </label>
           </div>
         </div>
-      `
-    }).mount('#app');
+      </div>
+    </div>
+
+    <div id="scoreModal" class="modal hidden" onclick="app.closeScoreModal()">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Session Complete!</h3>
+          <button class="close" onclick="app.closeScoreModal()">✕</button>
+        </div>
+        <div style="padding:1rem 0">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem">
+            <div style="background:#111;padding:1rem;border-radius:.5rem;text-align:center">
+              <div style="font-size:2.5rem;font-weight:700;color:#10b981" id="scoreComp">0</div>
+              <div style="font-size:.875rem;color:#9ca3af;margin-top:.25rem">Fully Completed</div>
+            </div>
+            <div style="background:#111;padding:1rem;border-radius:.5rem;text-align:center">
+              <div style="font-size:2.5rem;font-weight:700;color:#34d399" id="scoreDoneSkip">0</div>
+              <div style="font-size:.875rem;color:#9ca3af;margin-top:.25rem">Done Early (✓)</div>
+            </div>
+            <div style="background:#111;padding:1rem;border-radius:.5rem;text-align:center">
+              <div style="font-size:2.5rem;font-weight:700;color:#ef4444" id="scoreSkip">0</div>
+              <div style="font-size:.875rem;color:#9ca3af;margin-top:.25rem">Skipped</div>
+            </div>
+            <div style="background:#111;padding:1rem;border-radius:.5rem;text-align:center">
+              <div style="font-size:2.5rem;font-weight:700;color:#60a5fa" id="scoreEff">0%</div>
+              <div style="font-size:.875rem;color:#9ca3af;margin-top:.25rem">Efficiency</div>
+            </div>
+          </div>
+          <button onclick="app.closeScoreModal()" class="b3" style="width:100%;padding:1rem">Continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <script>
+    const $=(id)=>document.getElementById(id);
+    const app={
+      ts:[],run:0,i:0,p:0,int:null,ch:null,ch2:null,stream:null,scanInt:null,vibEnabled:true,pauseStart:null,totalPauseTime:0,pauseCount:0,targetTime:0,sessionStartTime:0,
+      
+      init(){
+        const s=localStorage.getItem('inp');
+        if(s){inp.value=s;this.parse()}
+        inp.oninput=()=>this.save();
+        const v=localStorage.getItem('vib');
+        this.vibEnabled=v===null?true:v==='true';
+        const h=localStorage.getItem('textareaHeight');
+        if(h)inp.style.height=h;
+        const ro=new ResizeObserver(()=>{
+          localStorage.setItem('textareaHeight',inp.style.height)
+        });
+        ro.observe(inp);
+        editor.classList.remove('hidden')
+      },
+      
+      parse(){
+        const ls=inp.value.split('\n').filter(l=>l.trim());
+        let currentRoutine=null;
+        this.ts=ls.map((l,i)=>{
+          const routineMatch=l.match(/^#\s+(.+)$/);
+          if(routineMatch){
+            currentRoutine=routineMatch[1].trim();
+            return null;
+          }
+          const m=l.match(/^(\d+(?:\.\d+)?)\s*(sec|min|m|s):\s*(.+)$/i);
+          if(!m)return null;
+          const[,n,u,lb]=m;
+          let s=parseFloat(n);
+          if(u.toLowerCase().startsWith('m'))s*=60;
+          return{id:Date.now()+i,label:lb.trim(),dur:Math.round(s),left:Math.round(s),remaining:Math.round(s),done:0,skip:0,skipdone:0,completed:0,routine:currentRoutine}
+        }).filter(Boolean);
+        $('cnt').textContent=this.ts.length;
+        this.targetTime=this.ts.reduce((sum,t)=>sum+t.dur,0);
+        $('totalTime').textContent=this.fmtLong(this.targetTime);
+        if(this.ts.length>0){
+          const now=new Date();
+          const targetDate=new Date(now.getTime()+this.targetTime*1000);
+          $('target').textContent=targetDate.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+        }else{
+          $('target').textContent='--:--';
+        }
+        $('start').disabled=!this.ts.length;
+        this.renderTasks()
+      },
+      
+      renderTasks(running){
+        const list=running?$('runList'):$('taskList');
+        const labelId=running?'runTaskHoverLabel':'taskHoverLabel';
+        list.innerHTML=this.ts.map((t,i)=>{
+          if(running){
+            const c=t.done?'done':t.skipdone?'skipdone':t.skip?'skip':i===this.i?'current':'resumable';
+            return`<div class="task ${c}" onclick="app.resumeFrom(${i})" onmouseenter="app.showTaskLabel('${labelId}',${i})" onmouseleave="app.hideTaskLabel('${labelId}')">${i+1}</div>`
+          }
+          return`<div class="task resumable" onclick="app.startFrom(${i})" onmouseenter="app.showTaskLabel('${labelId}',${i})" onmouseleave="app.hideTaskLabel('${labelId}')">${i+1}</div>`
+        }).join('')
+      },
+      
+      save(){
+        localStorage.setItem('inp',inp.value);
+        this.parse()
+      },
+      
+      ins(s){
+        const textarea=inp;
+        const pos=textarea.selectionStart||inp.value.length;
+        const before=inp.value.substring(0,pos);
+        const after=inp.value.substring(pos);
+        const prefix=before&&!before.endsWith('\n')?'\n':'';
+        inp.value=before+prefix+s+': \n'+after;
+        setTimeout(()=>{
+          const newPos=pos+prefix.length+s.length+2;
+          textarea.selectionStart=textarea.selectionEnd=newPos;
+          textarea.focus();
+        },0);
+        this.save()
+      },
+      
+      start(){
+        if(!this.ts.length)return;
+        this.run=1;this.i=0;
+        this.totalPauseTime=0;
+        this.pauseCount=0;
+        this.pauseStart=null;
+        this.sessionStartTime=Date.now();
+        this.ts.forEach(t=>{t.done=0;t.skip=0;t.skipdone=0;t.completed=0;t.left=t.dur;t.remaining=t.dur});
+        editor.classList.add('hidden');
+        timer.classList.remove('hidden');
+        this.updateUI();
+        this.execTask()
+      },
+      
+      startFrom(idx){
+        if(!this.ts.length||idx<0||idx>=this.ts.length)return;
+        this.run=1;this.i=idx;
+        this.totalPauseTime=0;
+        this.pauseCount=0;
+        this.pauseStart=null;
+        this.sessionStartTime=Date.now();
+        this.ts.forEach(t=>{t.done=0;t.skip=0;t.skipdone=0;t.completed=0;t.left=t.dur;t.remaining=t.dur});
+        editor.classList.add('hidden');
+        timer.classList.remove('hidden');
+        this.updateUI();
+        this.execTask()
+      },
+      
+      resumeFrom(idx){
+        if(!this.run||idx<0||idx>=this.ts.length||idx===this.i)return;
+        clearInterval(this.int);
+        this.i=idx;
+        this.updateUI();
+        this.execTask()
+      },
+      
+      execTask(){
+        if(this.i>=this.ts.length){this.stop();return}
+        const t=this.ts[this.i];
+        t.startLeft=t.left;
+        $('lbl').textContent=t.label;
+        if(t.routine){
+          $('routineBadge').classList.remove('hidden');
+          $('routineName').textContent=t.routine;
+        }else{
+          $('routineBadge').classList.add('hidden');
+        }
+        $('idx').textContent=this.i+1;
+        $('tot').textContent=this.ts.length;
+        $('backBtn').disabled=this.i===0;
+        this.renderTasks(1);
+        this.int=setInterval(()=>{
+          if(!this.p&&t.left>0){
+            t.left--;
+            t.remaining=t.left;
+            this.updateUI()
+          }
+          if(t.left<=0){
+            clearInterval(this.int);
+            t.done=1;
+            t.completed=1;
+            t.remaining=0;
+            this.vibrate();
+            this.i++;
+            this.execTask()
+          }
+        },1000)
+      },
+      
+      pause(){
+        if(!this.p){
+          this.pauseStart=Date.now();
+          this.pauseCount++;
+        }else{
+          if(this.pauseStart){
+            const pauseDuration=Math.floor((Date.now()-this.pauseStart)/1000);
+            this.totalPauseTime+=pauseDuration;
+            this.pauseStart=null;
+          }
+        }
+        this.p=!this.p;
+        $('pBtn').textContent=this.p?'Resume':'Pause'
+      },
+      
+      skipDone(){
+        if(this.ts[this.i]){
+          clearInterval(this.int);
+          const t=this.ts[this.i];
+          t.skipdone=1;
+          t.done=1;
+          t.completed=1;
+          t.timeUsed=t.startLeft-t.left;
+          this.vibrate();
+          this.i++;
+          this.execTask()
+        }
+      },
+      
+      skip(){
+        if(this.ts[this.i]){
+          clearInterval(this.int);
+          const t=this.ts[this.i];
+          t.skip=1;
+          t.timeUsed=t.startLeft-t.left;
+          this.i++;
+          this.execTask()
+        }
+      },
+      
+      previousTask(){
+        if(this.i>0){
+          clearInterval(this.int);
+          this.i--;
+          const t=this.ts[this.i];
+          t.done=0;
+          t.skip=0;
+          t.skipdone=0;
+          t.completed=0;
+          t.left=t.dur;
+          t.remaining=t.dur;
+          this.execTask()
+        }
+      },
+      
+      stop(){
+        clearInterval(this.int);
+        this.run=0;this.p=0;
+        const hasProgress=this.ts.some(t=>t.completed||t.skip||t.skipdone);
+        if(this.ts.length&&hasProgress){
+          this.saveSess();
+          this.showScore();
+        }else{
+          timer.classList.add('hidden');
+          editor.classList.remove('hidden');
+        }
+      },
+      
+      showScore(){
+        const fullComp=this.ts.filter(t=>t.completed&&!t.skipdone&&!t.skip).length;
+        const doneSkip=this.ts.filter(t=>t.skipdone).length;
+        const skipped=this.ts.filter(t=>t.skip&&!t.completed).length;
+        const eff=this.calcEfficiency();
+        $('scoreComp').textContent=fullComp;
+        $('scoreDoneSkip').textContent=doneSkip;
+        $('scoreSkip').textContent=skipped;
+        $('scoreEff').textContent=eff+'%';
+        $('scoreModal').classList.remove('hidden');
+      },
+      
+      closeScoreModal(){
+        $('scoreModal').classList.add('hidden');
+        editor.classList.remove('hidden');
+      },
+      
+      showSessionScore(idx){
+        const ss=this.getSessions();
+        if(!ss[idx])return;
+        const s=ss[idx];
+        $('scoreComp').textContent=s.completed||0;
+        $('scoreDoneSkip').textContent=s.doneSkip||0;
+        $('scoreSkip').textContent=s.skipped||0;
+        $('scoreEff').textContent=s.efficiency+'%';
+        $('scoreModal').classList.remove('hidden');
+      },
+      
+      showTaskLabel(labelId,idx){
+        if(this.ts[idx]){
+          $(labelId).textContent=this.ts[idx].label;
+        }
+      },
+      
+      hideTaskLabel(labelId){
+        $(labelId).textContent='';
+      },
+      
+      getSessions(){
+        return JSON.parse(localStorage.getItem('ss')||'[]');
+      },
+      
+      updateUI(){
+        const t=this.ts[this.i];
+        if(t)$('tm').textContent=this.fmt(t.left);
+        const eff=this.calcEfficiency();
+        const c=this.ts.filter(t=>t.completed&&!t.skip).length;
+        $('comp').textContent=c;
+        $('eff').textContent=eff+'%';
+        if(this.run){
+          let remaining=0;
+          for(let i=this.i;i<this.ts.length;i++){
+            remaining+=this.ts[i].remaining||0;
+          }
+          const now=new Date();
+          const targetDate=new Date(now.getTime()+remaining*1000);
+          $('targetTime').textContent=targetDate.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+        }
+        this.renderTasks(1)
+      },
+      
+      calcEfficiency(){
+        let totalCredit=0;
+        let totalPossible=0;
+        
+        this.ts.forEach(t=>{
+          totalPossible+=100;
+          if(t.completed&&!t.skip){
+            const timeUsed=t.timeUsed||t.dur;
+            const pct=(timeUsed/t.dur)*100;
+            if(t.skipdone){
+              totalCredit+=pct;
+            }else{
+              totalCredit+=100;
+            }
+          }
+        });
+        
+        const baseBonus=3;
+        totalCredit+=baseBonus;
+        totalPossible+=baseBonus;
+        
+        if(this.pauseCount>0){
+          const avgPauseTime=this.totalPauseTime/this.pauseCount;
+          if(avgPauseTime<=60){
+            const pauseBonus=Math.max(0,2-this.pauseCount*0.3);
+            totalCredit+=pauseBonus;
+            totalPossible+=pauseBonus;
+          }else if(avgPauseTime<=180){
+            const pausePenalty=Math.min(5,(avgPauseTime-60)/60);
+            totalPossible+=pausePenalty;
+          }else{
+            const pausePenalty=Math.min(10,(avgPauseTime-60)/30);
+            totalPossible+=pausePenalty;
+          }
+        }
+        
+        return this.ts.length?Math.round((totalCredit/totalPossible)*100):0
+      },
+      
+      saveSess(){
+        const ss=this.getSessions();
+        const fullComp=this.ts.filter(t=>t.completed&&!t.skipdone&&!t.skip).length;
+        const doneSkip=this.ts.filter(t=>t.skipdone).length;
+        const skipped=this.ts.filter(t=>t.skip&&!t.completed).length;
+        const e=this.calcEfficiency();
+        const actualTime=Math.floor((Date.now()-this.sessionStartTime)/1000);
+        const hitTarget=actualTime<=this.targetTime;
+        ss.push({
+          date:new Date().toISOString(),
+          total:this.ts.length,
+          completed:fullComp,
+          doneSkip:doneSkip,
+          skipped:skipped,
+          efficiency:e,
+          pauseTime:this.totalPauseTime,
+          pauseCount:this.pauseCount,
+          targetTime:this.targetTime,
+          actualTime:actualTime,
+          hitTarget:hitTarget,
+          tasks:this.ts.map(t=>({
+            label:t.label,
+            dur:t.dur,
+            timeUsed:t.timeUsed||t.dur,
+            done:t.done,
+            skip:t.skip,
+            skipdone:t.skipdone,
+            completed:t.completed,
+            routine:t.routine
+          }))
+        });
+        if(ss.length>50)ss.shift();
+        localStorage.setItem('ss',JSON.stringify(ss))
+      },
+      
+      graph(){
+        $('gModal').classList.remove('hidden');
+        setTimeout(()=>this.renderGraph(),100)
+      },
+      
+      closeModal(e,id){
+        if(!e||e.target===e.currentTarget)$(id).classList.add('hidden')
+      },
+      
+      renderGraph(){
+        const c=$('ch');
+        if(!c)return;
+        if(this.ch)this.ch.destroy();
+        if(this.ch2)this.ch2.destroy();
+        const ss=this.getSessions();
+        const ls=ss.map((_,i)=>'S'+(i+1));
+        const d=ss.map(s=>s.efficiency);
+        const pauseData=ss.map(s=>(s.pauseTime||0)/60);
+        
+        const taskPoints=[];
+        ss.forEach((s,sessIdx)=>{
+          if(!s.tasks)return;
+          s.tasks.forEach((t,taskIdx)=>{
+            let efficiency=0;
+            let color='#ef4444';
+            let label='Skipped';
+            
+            if(t.completed&&!t.skip){
+              const timeUsed=t.timeUsed||t.dur;
+              efficiency=Math.round((timeUsed/t.dur)*100);
+              if(t.skipdone){
+                color='#14b8a6';
+                label='Done✓ Early';
+              }else if(timeUsed===t.dur){
+                color='#10b981';
+                label='Full';
+                efficiency=100;
+              }else{
+                color='#14b8a6';
+                label='Partial';
+              }
+            }
+            
+            const taskOffset=(taskIdx-(s.tasks.length-1)/2)*0.15;
+            
+            taskPoints.push({
+              x:sessIdx+taskOffset,
+              y:efficiency,
+              taskName:t.label,
+              duration:this.fmtLong(t.dur),
+              timeUsed:this.fmtLong(t.timeUsed||0),
+              status:label,
+              color:color,
+              routine:t.routine||null
+            });
+          });
+        });
+        
+        this.ch=new Chart(c.getContext('2d'),{
+          type:'line',
+          data:{
+            labels:ls.length?ls:['No data'],
+            datasets:[
+              {
+                label:'Efficiency %',
+                data:d.length?d:[0],
+                borderColor:'rgb(16,185,129)',
+                backgroundColor:'rgba(16,185,129,0.1)',
+                tension:.4,
+                fill:!0,
+                yAxisID:'y',
+                order:2
+              },
+              {
+                label:'Pause Time (min)',
+                data:pauseData.length?pauseData:[0],
+                borderColor:'rgb(245,158,11)',
+                backgroundColor:'rgba(245,158,11,0.1)',
+                tension:.4,
+                fill:!0,
+                yAxisID:'y1',
+                order:3
+              },
+              {
+                label:'Tasks',
+                data:taskPoints,
+                type:'scatter',
+                backgroundColor:taskPoints.map(p=>p.color),
+                borderColor:taskPoints.map(p=>p.color),
+                borderWidth:2,
+                pointRadius:6,
+                pointHoverRadius:8,
+                yAxisID:'y',
+                order:1,
+                parsing:{
+                  xAxisKey:'x',
+                  yAxisKey:'y'
+                }
+              }
+            ]
+          },
+          options:{
+            responsive:!0,
+            maintainAspectRatio:!1,
+            plugins:{
+              legend:{labels:{color:'#fff'}},
+              tooltip:{
+                callbacks:{
+                  title:(items)=>{
+                    if(items.length>0&&items[0].datasetIndex===2){
+                      return '';
+                    }
+                    return Chart.defaults.plugins.tooltip.callbacks.title(items);
+                  },
+                  label:(context)=>{
+                    if(context.datasetIndex===2){
+                      return context.raw.taskName;
+                    }
+                    return context.dataset.label+': '+context.formattedValue;
+                  }
+                },
+                displayColors:!1,
+                backgroundColor:'#000',
+                padding:10,
+                bodyFont:{size:15,weight:'bold'},
+                titleFont:{size:0}
+              }
+            },
+            scales:{
+              y:{
+                type:'linear',
+                position:'left',
+                beginAtZero:!0,
+                max:100,
+                ticks:{color:'#fff'},
+                grid:{color:'rgba(255,255,255,0.1)'}
+              },
+              y1:{
+                type:'linear',
+                position:'right',
+                beginAtZero:!0,
+                ticks:{color:'#fff'},
+                grid:{display:!1}
+              },
+              x:{ticks:{color:'#fff'},grid:{color:'rgba(255,255,255,0.1)'}}
+            }
+          }
+        });
+
+        if(ss.length>0){
+          const datasets=[
+            {
+              label:'Completed (Full)',
+              data:ss.map(s=>s.completed||0),
+              backgroundColor:'rgb(16,185,129)',
+              stack:'stack1'
+            },
+            {
+              label:'Done✓ (Early)',
+              data:ss.map(s=>s.doneSkip||0),
+              backgroundColor:'rgb(52,211,153)',
+              stack:'stack1'
+            },
+            {
+              label:'Skipped',
+              data:ss.map(s=>s.skipped||0),
+              backgroundColor:'rgb(239,68,68)',
+              stack:'stack1'
+            }
+          ];
+
+          this.ch2=new Chart($('ch2').getContext('2d'),{
+            type:'bar',
+            data:{labels:ls,datasets},
+            options:{
+              responsive:!0,
+              maintainAspectRatio:!1,
+              plugins:{
+                legend:{labels:{color:'#fff'}},
+                title:{display:!0,text:'Task Breakdown',color:'#fff',font:{size:14}}
+              },
+              scales:{
+                y:{stacked:!0,beginAtZero:!0,ticks:{color:'#fff'},grid:{color:'rgba(255,255,255,0.1)'}},
+                x:{stacked:!0,ticks:{color:'#fff'},grid:{color:'rgba(255,255,255,0.1)'}}
+              }
+            }
+          });
+        }
+
+        this.renderSessions(ss)
+      },
+      
+      renderSessions(ss){
+        if(!ss.length)return $('sessions').innerHTML='<p style="text-align:center;color:#9ca3af;padding:2rem">No sessions yet</p>';
+        const h=ss.slice().reverse().map((s,idx)=>{
+          const dt=new Date(s.date);
+          const time=dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+          const date=dt.toLocaleDateString([],{month:'short',day:'numeric'});
+          const pauseInfo=s.pauseTime>0?` • ⏸️ ${Math.floor(s.pauseTime/60)}m ${s.pauseTime%60}s`:'';
+          const targetHit=s.hitTarget?' 🎯':'';
+          const fullComp=s.completed||0;
+          const doneSkip=s.doneSkip||0;
+          const skipped=s.skipped||0;
+          const sessIdx=ss.length-1-idx;
+          return`
+            <div class="sess">
+              <div class="sess-header">
+                <span class="sess-date">${date} ${time}${targetHit}</span>
+                <span class="sess-stats">${s.efficiency}% • ${fullComp+doneSkip}/${s.total}${pauseInfo}</span>
+              </div>
+              <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem;align-items:center">
+                ${fullComp>0?`<div style="padding:.25rem .5rem;border-radius:.25rem;background:#10b981;font-size:.75rem">✓ ${fullComp} Full</div>`:''}
+                ${doneSkip>0?`<div style="padding:.25rem .5rem;border-radius:.25rem;background:#34d399;font-size:.75rem">✓ ${doneSkip} Early</div>`:''}
+                ${skipped>0?`<div style="padding:.25rem .5rem;border-radius:.25rem;background:#ef4444;font-size:.75rem">✗ ${skipped} Skip</div>`:''}
+                <button onclick="app.showSessionScore(${sessIdx})" class="b6" style="padding:.25rem .5rem;font-size:.75rem;margin-left:auto">View Score</button>
+              </div>
+            </div>
+          `
+        }).join('');
+        $('sessions').innerHTML=h
+      },
+      
+      fmt(s){
+        const m=Math.floor(s/60);
+        const sc=s%60;
+        return m.toString().padStart(2,'0')+':'+sc.toString().padStart(2,'0')
+      },
+      
+      fmtLong(s){
+        const h=Math.floor(s/3600);
+        const m=Math.floor((s%3600)/60);
+        const sc=s%60;
+        if(h>0)return`${h}:${m.toString().padStart(2,'0')}:${sc.toString().padStart(2,'0')}`;
+        return`${m}:${sc.toString().padStart(2,'0')}`
+      },
+      
+      vibrate(){
+        if(this.vibEnabled&&'vibrate'in navigator)navigator.vibrate([200,100,200])
+      },
+      
+      settings(){
+        $('settingsModal').classList.remove('hidden');
+        $('vibToggle').checked=this.vibEnabled;
+        this.updateVibSlider()
+      },
+      
+      toggleVib(){
+        this.vibEnabled=$('vibToggle').checked;
+        localStorage.setItem('vib',this.vibEnabled);
+        this.updateVibSlider()
+      },
+      
+      updateVibSlider(){
+        $('vibSlider').style.background=this.vibEnabled?'#10b981':'#374151'
+      },
+      
+      exportQR(){
+        if(!inp.value.trim())return alert('Please enter some tasks first!');
+        const data=JSON.stringify({v:1,t:'mdtimer',c:inp.value,ts:Date.now()});
+        const url=`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(data)}`;
+        
+        const canvas=$('qrCanvas');
+        const img=document.createElement('img');
+        img.src=url;
+        img.alt='QR Code';
+        img.onerror=()=>canvas.innerHTML='<p style="color:#ef4444">Failed to load QR</p>';
+        
+        canvas.innerHTML='';
+        canvas.appendChild(img);
+        $('qrModal').classList.remove('hidden')
+      },
+      
+      async importQR(){
+        try{
+          this.stream=await navigator.mediaDevices.getUserMedia({
+            video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}
+          });
+          $('scanVideo').srcObject=this.stream;
+          $('scanModal').classList.remove('hidden');
+          $('scanStatus').textContent='Position QR code in camera view...';
+          $('scanStatus').style.color='#9ca3af';
+          this.startScan()
+        }catch(err){
+          alert('Camera access required. Please allow camera access.\n\nError: '+err.message)
+        }
+      },
+      
+      startScan(){
+        const canvas=document.createElement('canvas');
+        const ctx=canvas.getContext('2d');
+        const video=$('scanVideo');
+        this.scanInt=setInterval(()=>{
+          if(video.readyState===video.HAVE_ENOUGH_DATA){
+            canvas.width=video.videoWidth;
+            canvas.height=video.videoHeight;
+            ctx.drawImage(video,0,0,canvas.width,canvas.height);
+            const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
+            const code=jsQR(imgData.data,imgData.width,imgData.height);
+            if(code)this.processQR(code.data)
+          }
+        },200)
+      },
+      
+      processQR(raw){
+        try{
+          const data=JSON.parse(raw);
+          if(data.t==='mdtimer'&&data.c){
+            this.stopScan();
+            inp.value=data.c;
+            this.save();
+            const s=$('scanStatus');
+            s.textContent='✓ Tasks imported successfully!';
+            s.style.color='#10b981';
+            setTimeout(()=>this.closeScan(),1500)
+          }else{
+            $('scanStatus').textContent='⚠ Invalid QR code format';
+            $('scanStatus').style.color='#f59e0b'
+          }
+        }catch(err){
+          $('scanStatus').textContent='⚠ Could not read QR code';
+          $('scanStatus').style.color='#ef4444'
+        }
+      },
+      
+      stopScan(){
+        if(this.scanInt){clearInterval(this.scanInt);this.scanInt=null}
+        if(this.stream){
+          this.stream.getTracks().forEach(t=>t.stop());
+          this.stream=null;
+          $('scanVideo').srcObject=null
+        }
+      },
+      
+      closeScan(e){
+        if(!e||e.target===e.currentTarget){
+          this.stopScan();
+          $('scanModal').classList.add('hidden');
+          $('scanStatus').textContent='Position QR code in camera view...';
+          $('scanStatus').style.color='#9ca3af'
+        }
+      }
+    };
+    app.init()
   </script>
 </body>
 </html>
